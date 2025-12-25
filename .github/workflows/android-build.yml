@@ -20,22 +20,15 @@ jobs:
       with:
         java-version: '17'
         distribution: 'temurin'
-        cache: gradle
+        # cache: gradle # setup-gradle이 캐싱을 담당하므로 중복 방지
 
     - name: Setup Gradle
       uses: gradle/actions/setup-gradle@v3
-      
-    # 래퍼가 없을 경우를 대비해 gradle 명령어를 직접 사용할 수도 있지만, 
-    # 보통 안드로이드 프로젝트는 gradlew를 사용합니다.
-    # 만약 gradlew가 없다면 로컬에서 생성 후 push해야 합니다.
+      with:
+        gradle-version: '8.5' # Gradle 8.5 강제 지정
+
     - name: Build with Gradle
-      run: |
-        if [ -f ./gradlew ]; then
-            chmod +x gradlew
-            ./gradlew assembleDebug
-        else
-            gradle assembleDebug
-        fi
+      run: gradle assembleDebug
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
