@@ -1,0 +1,22 @@
+#!/bin/bash
+
+echo "🏗️  Running pre-commit build check..."
+
+# 프로젝트 루트로 이동 (훅이 .git/hooks에서 실행되므로 상위로 이동할 필요가 있을 수 있으나, 
+# git hook은 보통 레포지토리 루트에서 실행됨)
+
+if [ -f "./gradlew" ]; then
+    ./gradlew assembleDebug
+    EXIT_CODE=$?
+else
+    echo "⚠️  Gradle wrapper not found. Skipping build check."
+    exit 0
+fi
+
+if [ $EXIT_CODE -ne 0 ]; then
+    echo "❌  Build failed! Please fix build errors before committing."
+    exit 1
+fi
+
+echo "✅  Build successful!"
+exit 0
