@@ -3,6 +3,7 @@ package com.sleepysoong.armydiet.widget
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.DpSize
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.*
@@ -27,12 +28,6 @@ class MealWidget : GlanceAppWidget() {
         private val SIZE_SMALL = DpSize(100.dp, 48.dp)
         private val SIZE_MEDIUM = DpSize(180.dp, 100.dp)
         private val SIZE_LARGE = DpSize(250.dp, 180.dp)
-        
-        private const val BASE_FONT_TITLE = 11
-        private const val BASE_FONT_LABEL = 10
-        private const val BASE_FONT_CONTENT = 10
-        private const val BASE_FONT_SMALL = 9
-        
         private val ALLERGY_REGEX = Regex("\\([0-9.]+\\)")
     }
 
@@ -43,10 +38,7 @@ class MealWidget : GlanceAppWidget() {
         
         provideContent {
             GlanceTheme {
-                WidgetContent(
-                    data = data,
-                    size = LocalSize.current
-                )
+                WidgetContent(data = data, size = LocalSize.current)
             }
         }
     }
@@ -60,17 +52,13 @@ class MealWidget : GlanceAppWidget() {
             container.mealDao.getMeal(dateStr)
         }.getOrNull()
         
-        val configData = WidgetConfigData(
-            fontScale = config.fontScale.first(),
-            bgAlpha = config.backgroundAlpha.first(),
-            showCalories = config.showCalories.first()
-        )
-        
         WidgetData(
             meal = meal,
             displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M/d")),
             currentMeal = getCurrentMealType(),
-            config = configData
+            fontScale = config.fontScale.first(),
+            bgAlpha = config.backgroundAlpha.first(),
+            showCalories = config.showCalories.first()
         )
     }
 
@@ -91,7 +79,9 @@ private data class WidgetData(
     val meal: MealEntity?,
     val displayDate: String,
     val currentMeal: MealType,
-    val config: WidgetConfigData
+    val fontScale: Float,
+    val bgAlpha: Float,
+    val showCalories: Boolean
 )
 
 data class WidgetConfigData(
@@ -120,7 +110,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             .background(GlanceTheme.colors.background)
             .cornerRadius(12.dp)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(8.dp)
+            .padding(6.dp)
     ) {
         when (layout) {
             WidgetLayout.SMALL -> SmallLayout(data)
@@ -132,26 +122,74 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
 
 private enum class WidgetLayout { SMALL, MEDIUM, LARGE }
 
+// Font sizes based on scale
+private fun titleSize(scale: Float): TextUnit = (10 * scale).sp
+private fun labelSize(scale: Float): TextUnit = (9 * scale).sp
+private fun contentSize(scale: Float): TextUnit = (9 * scale).sp
+private fun smallSize(scale: Float): TextUnit = (8 * scale).sp
+
 @Composable
 private fun SmallLayout(data: WidgetData) {
     Column(
         modifier = GlanceModifier.fillMaxSize(),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        MealLabel(data.currentMeal.label, isActive = true, data.config)
+        Text(
+            text = data.currentMeal.label,
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = labelSize(data.fontScale),
+                fontWeight = FontWeight.Bold
+            )
+        )
         Spacer(modifier = GlanceModifier.height(2.dp))
-        MealText(getMealContent(data.meal, data.currentMeal), data.config, maxLines = 3)
+        Text(
+            text = getMealContent(data.meal, data.currentMeal),
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = contentSize(data.fontScale)
+            ),
+            maxLines = 3
+        )
     }
 }
 
 @Composable
 private fun MediumLayout(data: WidgetData) {
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        DateHeader(data.displayDate, data.config)
-        Spacer(modifier = GlanceModifier.height(4.dp))
+        Text(
+            text = data.displayDate,
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = titleSize(data.fontScale),
+                fontWeight = FontWeight.Bold
+            )
+        )
+        Spacer(modifier = GlanceModifier.height(3.dp))
         
         MealType.entries.forEach { type ->
-            MealRow(type, getMealContent(data.meal, type), type == data.currentMeal, data.config)
+            Row(
+                modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = type.label,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        fontSize = labelSize(data.fontScale),
+                        fontWeight = if (type == data.currentMeal) FontWeight.Bold else FontWeight.Normal
+                    ),
+                    modifier = GlanceModifier.width(26.dp)
+                )
+                Text(
+                    text = getMealContent(data.meal, type),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        fontSize = contentSize(data.fontScale)
+                    ),
+                    maxLines = 1
+                )
+            }
         }
     }
 }
@@ -159,104 +197,56 @@ private fun MediumLayout(data: WidgetData) {
 @Composable
 private fun LargeLayout(data: WidgetData) {
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        DateHeader(data.displayDate, data.config)
-        Spacer(modifier = GlanceModifier.height(4.dp))
+        Text(
+            text = data.displayDate,
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = titleSize(data.fontScale),
+                fontWeight = FontWeight.Bold
+            )
+        )
+        Spacer(modifier = GlanceModifier.height(3.dp))
         
         MealType.entries.forEach { type ->
-            MealCard(type, getMealContent(data.meal, type), type == data.currentMeal, data.config)
+            val isActive = type == data.currentMeal
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .background(if (isActive) GlanceTheme.colors.primaryContainer else GlanceTheme.colors.surfaceVariant)
+                    .cornerRadius(4.dp)
+                    .padding(4.dp)
+            ) {
+                Text(
+                    text = type.label,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        fontSize = labelSize(data.fontScale),
+                        fontWeight = FontWeight.Bold
+                    )
+                )
+                Text(
+                    text = getMealContent(data.meal, type),
+                    style = TextStyle(
+                        color = GlanceTheme.colors.onBackground,
+                        fontSize = contentSize(data.fontScale)
+                    ),
+                    maxLines = 3
+                )
+            }
             if (type != MealType.DINNER) Spacer(modifier = GlanceModifier.height(2.dp))
         }
         
-        if (data.config.showCalories && !data.meal?.sumCal.isNullOrBlank()) {
+        if (data.showCalories && !data.meal?.sumCal.isNullOrBlank()) {
             Spacer(modifier = GlanceModifier.height(2.dp))
-            CaloriesText(data.meal?.sumCal ?: "", data.config)
+            Text(
+                text = "${data.meal?.sumCal} kcal",
+                style = TextStyle(
+                    color = GlanceTheme.colors.secondary,
+                    fontSize = smallSize(data.fontScale)
+                )
+            )
         }
     }
-}
-
-@Composable
-private fun DateHeader(date: String, config: WidgetConfigData) {
-    Text(
-        text = date,
-        style = TextStyle(
-            color = GlanceTheme.colors.onBackground,
-            fontSize = (BASE_FONT_TITLE * config.fontScale).sp,
-            fontWeight = FontWeight.Bold
-        )
-    )
-}
-
-private const val BASE_FONT_TITLE = 11
-private const val BASE_FONT_LABEL = 10
-private const val BASE_FONT_CONTENT = 10
-private const val BASE_FONT_SMALL = 9
-
-@Composable
-private fun MealLabel(label: String, isActive: Boolean, config: WidgetConfigData) {
-    Text(
-        text = label,
-        style = TextStyle(
-            color = GlanceTheme.colors.onBackground,
-            fontSize = (BASE_FONT_LABEL * config.fontScale).sp,
-            fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
-        )
-    )
-}
-
-@Composable
-private fun MealText(text: String, config: WidgetConfigData, maxLines: Int = 1) {
-    Text(
-        text = text,
-        style = TextStyle(
-            color = GlanceTheme.colors.onBackground,
-            fontSize = (BASE_FONT_CONTENT * config.fontScale).sp
-        ),
-        maxLines = maxLines
-    )
-}
-
-@Composable
-private fun MealRow(type: MealType, content: String, isActive: Boolean, config: WidgetConfigData) {
-    Row(
-        modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = type.label,
-            style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = (BASE_FONT_LABEL * config.fontScale).sp,
-                fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal
-            ),
-            modifier = GlanceModifier.width(28.dp)
-        )
-        MealText(content, config)
-    }
-}
-
-@Composable
-private fun MealCard(type: MealType, content: String, isActive: Boolean, config: WidgetConfigData) {
-    Column(
-        modifier = GlanceModifier
-            .fillMaxWidth()
-            .background(if (isActive) GlanceTheme.colors.primaryContainer else GlanceTheme.colors.surfaceVariant)
-            .cornerRadius(4.dp)
-            .padding(4.dp)
-    ) {
-        MealLabel(type.label, isActive, config)
-        MealText(content, config, maxLines = 3)
-    }
-}
-
-@Composable
-private fun CaloriesText(calories: String, config: WidgetConfigData) {
-    Text(
-        text = "$calories kcal",
-        style = TextStyle(
-            color = GlanceTheme.colors.secondary,
-            fontSize = (BASE_FONT_SMALL * config.fontScale).sp
-        )
-    )
 }
 
 private val ALLERGY_REGEX = Regex("\\([0-9.]+\\)")
@@ -269,5 +259,5 @@ private fun getMealContent(meal: MealEntity?, type: MealType): String {
         MealType.DINNER -> meal.dinner
     }
     if (content.isBlank() || content == "메뉴 정보 없음") return "-"
-    return ALLERGY_REGEX.replace(content, "").trim()
+    return ALLERGY_REGEX.replace(content, "").replace("  ", " ").trim()
 }

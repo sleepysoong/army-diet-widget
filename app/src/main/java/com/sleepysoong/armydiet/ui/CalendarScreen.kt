@@ -1,0 +1,301 @@
+package com.sleepysoong.armydiet.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.sleepysoong.armydiet.data.local.MealEntity
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.*
+
+@Composable
+fun CalendarScreen(
+    selectedDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    mealData: Map<String, MealEntity>,
+    selectedMeal: MealEntity?,
+    modifier: Modifier = Modifier
+) {
+    var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    
+    Column(modifier = modifier.fillMaxSize()) {
+        // 캘린더 헤더
+        CalendarHeader(
+            currentMonth = currentMonth,
+            onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+            onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
+        )
+        
+        // 요일 헤더
+        WeekDayHeader()
+        
+        // 캘린더 그리드
+        CalendarGrid(
+            currentMonth = currentMonth,
+            selectedDate = selectedDate,
+            mealData = mealData,
+            onDateSelected = onDateSelected
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // 선택된 날짜의 식단
+        SelectedDateMeal(
+            date = selectedDate,
+            meal = selectedMeal
+        )
+    }
+}
+
+@Composable
+private fun CalendarHeader(
+    currentMonth: YearMonth,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onPreviousMonth) {
+            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "이전 달")
+        }
+        
+        Text(
+            text = "${currentMonth.year}년 ${currentMonth.monthValue}월",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        
+        IconButton(onClick = onNextMonth) {
+            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "다음 달")
+        }
+    }
+}
+
+@Composable
+private fun WeekDayHeader() {
+    val weekDays = listOf("일", "월", "화", "수", "목", "금", "토")
+    
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp)
+    ) {
+        weekDays.forEachIndexed { index, day ->
+            Text(
+                text = day,
+                modifier = Modifier.weight(1f),
+                textAlign = TextAlign.Center,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Medium,
+                color = when (index) {
+                    0 -> Color.Red.copy(alpha = 0.7f)
+                    6 -> Color.Blue.copy(alpha = 0.7f)
+                    else -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun CalendarGrid(
+    currentMonth: YearMonth,
+    selectedDate: LocalDate,
+    mealData: Map<String, MealEntity>,
+    onDateSelected: (LocalDate) -> Unit
+) {
+    val firstDayOfMonth = currentMonth.atDay(1)
+    val lastDayOfMonth = currentMonth.atEndOfMonth()
+    val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7
+    
+    val days = mutableListOf<LocalDate?>()
+    
+    // 이전 달의 빈 칸
+    repeat(firstDayOfWeek) { days.add(null) }
+    
+    // 현재 달의 날짜들
+    var currentDay = firstDayOfMonth
+    while (!currentDay.isAfter(lastDayOfMonth)) {
+        days.add(currentDay)
+        currentDay = currentDay.plusDays(1)
+    }
+    
+    LazyVerticalGrid(
+        columns = GridCells.Fixed(7),
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(240.dp)
+            .padding(horizontal = 4.dp),
+        userScrollEnabled = false
+    ) {
+        items(days) { date ->
+            if (date != null) {
+                val dateStr = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+                val hasMeal = mealData.containsKey(dateStr)
+                val isSelected = date == selectedDate
+                val isToday = date == LocalDate.now()
+                
+                DayCell(
+                    date = date,
+                    isSelected = isSelected,
+                    isToday = isToday,
+                    hasMeal = hasMeal,
+                    onClick = { onDateSelected(date) }
+                )
+            } else {
+                Box(modifier = Modifier.aspectRatio(1f))
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayCell(
+    date: LocalDate,
+    isSelected: Boolean,
+    isToday: Boolean,
+    hasMeal: Boolean,
+    onClick: () -> Unit
+) {
+    val dayOfWeek = date.dayOfWeek.value % 7
+    
+    Box(
+        modifier = Modifier
+            .aspectRatio(1f)
+            .padding(2.dp)
+            .clip(RoundedCornerShape(8.dp))
+            .background(
+                when {
+                    isSelected -> MaterialTheme.colorScheme.primary
+                    isToday -> MaterialTheme.colorScheme.primaryContainer
+                    else -> Color.Transparent
+                }
+            )
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(
+                text = date.dayOfMonth.toString(),
+                fontSize = 14.sp,
+                fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
+                color = when {
+                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                    dayOfWeek == 0 -> Color.Red.copy(alpha = 0.8f)
+                    dayOfWeek == 6 -> Color.Blue.copy(alpha = 0.8f)
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
+            )
+            if (hasMeal) {
+                Box(
+                    modifier = Modifier
+                        .size(4.dp)
+                        .clip(CircleShape)
+                        .background(
+                            if (isSelected) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.primary
+                        )
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SelectedDateMeal(
+    date: LocalDate,
+    meal: MealEntity?
+) {
+    val displayDate = date.format(DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN))
+    
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 150.dp)
+                .padding(12.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                text = displayDate,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
+            if (meal == null) {
+                Text(
+                    text = "식단 정보 없음",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 14.sp
+                )
+            } else {
+                MealItem("조식", meal.breakfast)
+                MealItem("중식", meal.lunch)
+                MealItem("석식", meal.dinner)
+                
+                if (meal.sumCal.isNotBlank()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "${meal.sumCal} kcal",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MealItem(title: String, content: String) {
+    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+        Text(
+            text = title,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+        Text(
+            text = if (content.isBlank() || content == "메뉴 정보 없음") "-" else content,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+    }
+}

@@ -8,6 +8,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -20,12 +23,16 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
+import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
+import com.sleepysoong.armydiet.ui.CalendarScreen
 import com.sleepysoong.armydiet.ui.MainViewModel
 import com.sleepysoong.armydiet.ui.MainViewModelFactory
 import com.sleepysoong.armydiet.ui.MealUiState
 import com.sleepysoong.armydiet.ui.theme.AppTheme
 import com.sleepysoong.armydiet.worker.SyncWorker
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
@@ -51,7 +58,7 @@ class MainActivity : ComponentActivity() {
                         applicationContext
                     )
                     val viewModel: MainViewModel = viewModel(factory = factory)
-                    MealScreen(viewModel)
+                    MainScreen(viewModel, container)
                 }
             }
         }
@@ -79,15 +86,69 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun MealScreen(viewModel: MainViewModel) {
+fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
+    var currentTab by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    
+    // 캘린더용 상태
+    var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var allMeals by remember { mutableStateOf<Map<String, MealEntity>>(emptyMap()) }
+    var selectedMeal by remember { mutableStateOf<MealEntity?>(null) }
+    
+    // 식단 데이터 로드
+    LaunchedEffect(Unit) {
+        container.mealDao.getAllMealsFlow().collect { meals ->
+            allMeals = meals.associateBy { it.date }
+        }
+    }
+    
+    // 선택된 날짜의 식단 업데이트
+    LaunchedEffect(selectedDate, allMeals) {
+        val dateStr = selectedDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        selectedMeal = allMeals[dateStr]
+    }
 
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.Home, contentDescription = "오늘") },
+                    label = { Text("오늘") },
+                    selected = currentTab == 0,
+                    onClick = { currentTab = 0 }
+                )
+                NavigationBarItem(
+                    icon = { Icon(Icons.Default.DateRange, contentDescription = "캘린더") },
+                    label = { Text("캘린더") },
+                    selected = currentTab == 1,
+                    onClick = { currentTab = 1 }
+                )
+            }
+        }
+    ) { padding ->
+        Box(modifier = Modifier.padding(padding)) {
+            when (currentTab) {
+                0 -> TodayScreen(uiState, viewModel)
+                1 -> CalendarScreen(
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                    mealData = allMeals,
+                    selectedMeal = selectedMeal,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        when (val state = uiState) {
+        when (uiState) {
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
             is MealUiState.Loading -> LoadingScreen()
-            is MealUiState.Error -> ErrorScreen(state.message, viewModel::loadMeal, viewModel::resetApiKey)
-            is MealUiState.Success -> MealContent(state, viewModel)
+            is MealUiState.Error -> ErrorScreen(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
+            is MealUiState.Success -> MealContent(uiState, viewModel)
         }
     }
 }
