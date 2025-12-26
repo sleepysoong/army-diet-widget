@@ -19,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -27,8 +28,9 @@ import com.sleepysoong.armydiet.data.local.MealEntity
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.*
+
+private val ALLERGY_REGEX = Regex("\\([0-9.]+\\)")
 
 @Composable
 fun CalendarScreen(
@@ -39,33 +41,77 @@ fun CalendarScreen(
     modifier: Modifier = Modifier
 ) {
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
     
-    Column(modifier = modifier.fillMaxSize()) {
-        // 캘린더 헤더
-        CalendarHeader(
-            currentMonth = currentMonth,
-            onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-            onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
-        )
-        
-        // 요일 헤더
-        WeekDayHeader()
-        
-        // 캘린더 그리드
-        CalendarGrid(
-            currentMonth = currentMonth,
-            selectedDate = selectedDate,
-            mealData = mealData,
-            onDateSelected = onDateSelected
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // 선택된 날짜의 식단
-        SelectedDateMeal(
-            date = selectedDate,
-            meal = selectedMeal
-        )
+    // 폴드/태블릿 대응: 가로가 넓으면 가로 배치
+    val isWideScreen = screenWidth > 600.dp
+    
+    if (isWideScreen) {
+        // 가로 레이아웃 (폴드 펼침, 태블릿)
+        Row(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(horizontal = 8.dp)
+        ) {
+            // 캘린더 (왼쪽)
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            ) {
+                CalendarHeader(
+                    currentMonth = currentMonth,
+                    onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                    onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
+                )
+                WeekDayHeader()
+                CalendarGrid(
+                    currentMonth = currentMonth,
+                    selectedDate = selectedDate,
+                    mealData = mealData,
+                    onDateSelected = onDateSelected,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // 식단 정보 (오른쪽)
+            SelectedDateMeal(
+                date = selectedDate,
+                meal = selectedMeal,
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+            )
+        }
+    } else {
+        // 세로 레이아웃 (일반 폰, 폴드 접힘)
+        Column(modifier = modifier.fillMaxSize()) {
+            CalendarHeader(
+                currentMonth = currentMonth,
+                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
+            )
+            WeekDayHeader()
+            CalendarGrid(
+                currentMonth = currentMonth,
+                selectedDate = selectedDate,
+                mealData = mealData,
+                onDateSelected = onDateSelected,
+                modifier = Modifier.weight(0.45f)
+            )
+            
+            Spacer(modifier = Modifier.height(8.dp))
+            
+            SelectedDateMeal(
+                date = selectedDate,
+                meal = selectedMeal,
+                modifier = Modifier.weight(0.55f)
+            )
+        }
     }
 }
 
@@ -78,7 +124,7 @@ private fun CalendarHeader(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 8.dp, vertical = 12.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -130,7 +176,8 @@ private fun CalendarGrid(
     currentMonth: YearMonth,
     selectedDate: LocalDate,
     mealData: Map<String, MealEntity>,
-    onDateSelected: (LocalDate) -> Unit
+    onDateSelected: (LocalDate) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val firstDayOfMonth = currentMonth.atDay(1)
     val lastDayOfMonth = currentMonth.atEndOfMonth()
@@ -138,10 +185,8 @@ private fun CalendarGrid(
     
     val days = mutableListOf<LocalDate?>()
     
-    // 이전 달의 빈 칸
     repeat(firstDayOfWeek) { days.add(null) }
     
-    // 현재 달의 날짜들
     var currentDay = firstDayOfMonth
     while (!currentDay.isAfter(lastDayOfMonth)) {
         days.add(currentDay)
@@ -150,9 +195,8 @@ private fun CalendarGrid(
     
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(240.dp)
             .padding(horizontal = 4.dp),
         userScrollEnabled = false
     ) {
@@ -232,20 +276,20 @@ private fun DayCell(
 @Composable
 private fun SelectedDateMeal(
     date: LocalDate,
-    meal: MealEntity?
+    meal: MealEntity?,
+    modifier: Modifier = Modifier
 ) {
     val displayDate = date.format(DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN))
     
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 150.dp)
+                .fillMaxSize()
                 .padding(12.dp)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -265,9 +309,9 @@ private fun SelectedDateMeal(
                     fontSize = 14.sp
                 )
             } else {
-                MealItem("조식", meal.breakfast)
-                MealItem("중식", meal.lunch)
-                MealItem("석식", meal.dinner)
+                MealItem("조식", cleanAllergyInfo(meal.breakfast))
+                MealItem("중식", cleanAllergyInfo(meal.lunch))
+                MealItem("석식", cleanAllergyInfo(meal.dinner))
                 
                 formatCalories(meal.sumCal)?.let { cal ->
                     Spacer(modifier = Modifier.height(8.dp))
@@ -280,13 +324,6 @@ private fun SelectedDateMeal(
             }
         }
     }
-}
-
-private fun formatCalories(sumCal: String?): String? {
-    if (sumCal.isNullOrBlank()) return null
-    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
-    val value = cleaned.toDoubleOrNull() ?: return null
-    return "${value.toInt()} kcal"
 }
 
 @Composable
@@ -305,4 +342,16 @@ private fun MealItem(title: String, content: String) {
             color = MaterialTheme.colorScheme.onSurface
         )
     }
+}
+
+private fun cleanAllergyInfo(text: String): String {
+    if (text.isBlank()) return ""
+    return ALLERGY_REGEX.replace(text, "").replace("  ", " ").trim()
+}
+
+private fun formatCalories(sumCal: String?): String? {
+    if (sumCal.isNullOrBlank()) return null
+    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    return "${value.toInt()} kcal"
 }
