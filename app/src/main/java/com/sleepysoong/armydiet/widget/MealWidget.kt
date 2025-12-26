@@ -183,6 +183,8 @@ private fun LargeLayout(meal: MealEntity?, displayDate: String, currentMealType:
     }
 }
 
+private val allergyRegex = Regex("\\([0-9.]+\\)")
+
 private fun getMealContent(meal: MealEntity?, type: MealType): String {
     if (meal == null) return "-"
     val content = when (type) {
@@ -190,5 +192,6 @@ private fun getMealContent(meal: MealEntity?, type: MealType): String {
         MealType.LUNCH -> meal.lunch
         MealType.DINNER -> meal.dinner
     }
-    return if (content.isBlank() || content == "메뉴 정보 없음") "-" else content
+    if (content.isBlank() || content == "메뉴 정보 없음") return "-"
+    return allergyRegex.replace(content, "").trim()
 }
