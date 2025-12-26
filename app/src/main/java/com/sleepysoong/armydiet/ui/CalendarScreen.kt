@@ -269,10 +269,10 @@ private fun SelectedDateMeal(
                 MealItem("중식", meal.lunch)
                 MealItem("석식", meal.dinner)
                 
-                if (meal.sumCal.isNotBlank()) {
+                formatCalories(meal.sumCal)?.let { cal ->
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${meal.sumCal} kcal",
+                        text = cal,
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -280,6 +280,13 @@ private fun SelectedDateMeal(
             }
         }
     }
+}
+
+private fun formatCalories(sumCal: String?): String? {
+    if (sumCal.isNullOrBlank()) return null
+    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    return "${value.toInt()} kcal"
 }
 
 @Composable

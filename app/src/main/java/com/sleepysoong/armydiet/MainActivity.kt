@@ -244,10 +244,10 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
             if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
                 MealSection("부식", state.meal.adspcfd)
             }
-            if (state.meal.sumCal.isNotBlank()) {
+            formatCalories(state.meal.sumCal)?.let { cal ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "${state.meal.sumCal} kcal",
+                    text = cal,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontSize = 12.sp
                 )
@@ -257,6 +257,13 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
         Spacer(modifier = Modifier.height(24.dp))
         ActionButtons(viewModel::loadMeal, viewModel::resetApiKey)
     }
+}
+
+private fun formatCalories(sumCal: String?): String? {
+    if (sumCal.isNullOrBlank()) return null
+    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    return "${value.toInt()} kcal"
 }
 
 @Composable

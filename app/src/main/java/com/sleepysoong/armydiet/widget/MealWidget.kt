@@ -45,7 +45,7 @@ class MealWidget : GlanceAppWidget() {
 
     private suspend fun loadWidgetData(context: Context): WidgetData = withContext(Dispatchers.IO) {
         val container = AppContainer.getInstance(context)
-        val config = container.widgetConfig
+        val config = WidgetConfig(context) // 새 인스턴스로 항상 최신 값 읽기
         
         val meal = runCatching {
             val dateStr = getTargetDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
@@ -110,7 +110,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             .background(GlanceTheme.colors.background)
             .cornerRadius(12.dp)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(6.dp)
+            .padding(8.dp)
     ) {
         when (layout) {
             WidgetLayout.SMALL -> SmallLayout(data)
@@ -122,11 +122,11 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
 
 private enum class WidgetLayout { SMALL, MEDIUM, LARGE }
 
-// Font sizes based on scale
-private fun titleSize(scale: Float): TextUnit = (10 * scale).sp
-private fun labelSize(scale: Float): TextUnit = (9 * scale).sp
-private fun contentSize(scale: Float): TextUnit = (9 * scale).sp
-private fun smallSize(scale: Float): TextUnit = (8 * scale).sp
+// 기본 폰트 크기 증가
+private fun titleSize(scale: Float): TextUnit = (12 * scale).sp
+private fun labelSize(scale: Float): TextUnit = (11 * scale).sp
+private fun contentSize(scale: Float): TextUnit = (11 * scale).sp
+private fun smallSize(scale: Float): TextUnit = (10 * scale).sp
 
 @Composable
 private fun SmallLayout(data: WidgetData) {
@@ -165,7 +165,7 @@ private fun MediumLayout(data: WidgetData) {
                 fontWeight = FontWeight.Bold
             )
         )
-        Spacer(modifier = GlanceModifier.height(3.dp))
+        Spacer(modifier = GlanceModifier.height(4.dp))
         
         MealType.entries.forEach { type ->
             Row(
@@ -179,7 +179,7 @@ private fun MediumLayout(data: WidgetData) {
                         fontSize = labelSize(data.fontScale),
                         fontWeight = if (type == data.currentMeal) FontWeight.Bold else FontWeight.Normal
                     ),
-                    modifier = GlanceModifier.width(26.dp)
+                    modifier = GlanceModifier.width(30.dp)
                 )
                 Text(
                     text = getMealContent(data.meal, type),
@@ -205,7 +205,7 @@ private fun LargeLayout(data: WidgetData) {
                 fontWeight = FontWeight.Bold
             )
         )
-        Spacer(modifier = GlanceModifier.height(3.dp))
+        Spacer(modifier = GlanceModifier.height(4.dp))
         
         MealType.entries.forEach { type ->
             val isActive = type == data.currentMeal
@@ -214,7 +214,7 @@ private fun LargeLayout(data: WidgetData) {
                     .fillMaxWidth()
                     .background(if (isActive) GlanceTheme.colors.primaryContainer else GlanceTheme.colors.surfaceVariant)
                     .cornerRadius(4.dp)
-                    .padding(4.dp)
+                    .padding(6.dp)
             ) {
                 Text(
                     text = type.label,
@@ -233,18 +233,21 @@ private fun LargeLayout(data: WidgetData) {
                     maxLines = 3
                 )
             }
-            if (type != MealType.DINNER) Spacer(modifier = GlanceModifier.height(2.dp))
+            if (type != MealType.DINNER) Spacer(modifier = GlanceModifier.height(3.dp))
         }
         
-        if (data.showCalories && !data.meal?.sumCal.isNullOrBlank()) {
-            Spacer(modifier = GlanceModifier.height(2.dp))
-            Text(
-                text = "${data.meal?.sumCal} kcal",
-                style = TextStyle(
-                    color = GlanceTheme.colors.secondary,
-                    fontSize = smallSize(data.fontScale)
+        if (data.showCalories) {
+            val calories = formatCalories(data.meal?.sumCal)
+            if (calories != null) {
+                Spacer(modifier = GlanceModifier.height(4.dp))
+                Text(
+                    text = calories,
+                    style = TextStyle(
+                        color = GlanceTheme.colors.secondary,
+                        fontSize = smallSize(data.fontScale)
+                    )
                 )
-            )
+            }
         }
     }
 }
@@ -260,4 +263,12 @@ private fun getMealContent(meal: MealEntity?, type: MealType): String {
     }
     if (content.isBlank() || content == "메뉴 정보 없음") return "-"
     return ALLERGY_REGEX.replace(content, "").replace("  ", " ").trim()
+}
+
+private fun formatCalories(sumCal: String?): String? {
+    if (sumCal.isNullOrBlank()) return null
+    // "1234.56kcal" or "1234.56" -> "1235 kcal"
+    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    return "${value.toInt()} kcal"
 }
