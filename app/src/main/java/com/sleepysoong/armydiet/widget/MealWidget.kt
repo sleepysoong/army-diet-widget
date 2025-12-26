@@ -178,7 +178,7 @@ private fun MediumLayout(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "🍚 짬수첩",
+                text = "🍚 식냥",
                 style = TextStyle(
                     color = GlanceTheme.colors.primary,
                     fontSize = 13.sp,
@@ -299,7 +299,7 @@ private fun WidgetHeader(displayDate: String) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
-            text = "🍚 짬수첩",
+            text = "🍚 식냥",
             style = TextStyle(
                 color = GlanceTheme.colors.primary,
                 fontSize = 15.sp,

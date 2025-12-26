@@ -20,7 +20,7 @@
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:text="🍚 짬수첩"
+                android:text="🍚 식냥"
                 android:textColor="#2E7D32"
                 android:textSize="15sp"
                 android:textStyle="bold" />
