@@ -14,18 +14,16 @@ import java.util.concurrent.ConcurrentHashMap
 
 class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
 
+    // (1), (1.2), (1.2.3) 등 숫자와 점으로 구성된 알레르기 정보 제거
     private val allergyRegex = Regex("\\([0-9.]+\\)")
-    // Go: strings.Split(dateStr, "(")[0]
-    
-    // Go: DietService.GetMenu
+    private val dateParseRegex = Regex("\\(.*?\\)")
+
     suspend fun getMeal(date: String): Result<MealEntity?> {
         return withContext(Dispatchers.IO) {
             try {
                 DebugLogger.log("Repo", "Getting meal for $date")
                 val meal = mealDao.getMeal(date)
                 
-                // 알레르기 정보 제거 후 반환 (Entity 자체는 원본 유지, 뷰용 데이터만 가공해도 되지만
-                // Go 코드에서는 GetMenu 시점에 제거함)
                 if (meal != null) {
                     val cleanMeal = meal.copy(
                         breakfast = cleanText(meal.breakfast),
@@ -44,7 +42,6 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
         }
     }
 
-    // Go: DietService.SyncData
     suspend fun syncRecentData(apiKey: String) {
         withContext(Dispatchers.IO) {
             try {
@@ -57,13 +54,9 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
 
                 if (totalCount == 0) return@withContext
 
-                // Go와 달리 전체를 다 받으면 모바일에서 무리일 수 있으므로 
-                // 최근 100개(약 1달치) 정도만 가져오도록 조정하거나, 
-                // 사용자가 원하면 전체 동기화도 가능하게 해야 함.
-                // 여기서는 "오늘 식단"이 주 목적이므로 최근 100건만 가져옵니다.
-                // Go 코드는 lastIdx를 저장해서 증분 업데이트를 하지만, 
-                // 앱에서는 단순화를 위해 매번 최근 데이터를 갱신합니다.
-                
+                // Go 코드와 마찬가지로 인덱스 기반으로 가져옵니다.
+                // 데이터가 날짜순 정렬이 아니더라도, 전체 데이터 중 일부를 갱신하는 개념입니다.
+                // 여기서는 최근 100건을 가져옵니다.
                 val batchSize = 100
                 val startIdx = (totalCount - batchSize + 1).coerceAtLeast(1)
                 val endIdx = totalCount
@@ -101,35 +94,32 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                 breakfast = "", lunch = "", dinner = "", adspcfd = "", sumCal = ""
             )
 
-            // Go: Merge logic inline in processRows
+            // Go 코드 로직을 정확히 따름:
+            // "if row.Brst != "" { if m.Breakfast != "" { m.Breakfast += ", " }; m.Breakfast += row.Brst }"
+            // 즉, 여기서는 단순 연결만 하고, 나중에 mergeMenuItems로 정렬/중복제거
+            
             processed[dateClean] = existing.copy(
-                breakfast = mergeStrings(existing.breakfast, row.brst),
-                lunch = mergeStrings(existing.lunch, row.lunc),
-                dinner = mergeStrings(existing.dinner, row.dinr),
-                adspcfd = mergeStrings(existing.adspcfd, row.adspcfd),
-                sumCal = if (row.sumCal.isNullOrBlank()) existing.sumCal else row.sumCal
+                breakfast = appendString(existing.breakfast, row.brst),
+                lunch = appendString(existing.lunch, row.lunc),
+                dinner = appendString(existing.dinner, row.dinr),
+                adspcfd = appendString(existing.adspcfd, row.adspcfd),
+                sumCal = if (!row.sumCal.isNullOrBlank()) row.sumCal else existing.sumCal
             )
         }
         return processed
     }
 
-    // Go: mergeMenuItems (Helper) -> processRows에서 inline으로 호출됨
-    // But processRows adds with ", ". mergeMenuItems does split/sort/join.
-    // Go 코드의 processRows는 단순히 string concat을 하고 있고, 
-    // models.Meal.Merge 함수가 mergeMenuItems를 호출함.
-    // 여기서는 processRows 단계에서 API 데이터끼리의 병합을 수행하고, 
-    // upsertMeals에서 DB 데이터와의 병합을 수행합니다.
-
-    private fun mergeStrings(current: String, new: String?): String {
+    private fun appendString(current: String, new: String?): String {
         if (new.isNullOrBlank()) return current
-        if (current.isBlank()) return new
+        if (current.isEmpty()) return new
         return "$current, $new"
     }
 
     // Go: Repository.UpsertMeals & models.Meal.Merge
     private suspend fun upsertMeals(newMeals: Map<String, MealEntity>) {
-        // 1. 기존 데이터 조회
         val dates = newMeals.keys.toList()
+        
+        // DB에서 기존 데이터 조회
         val existingEntities = mealDao.getMealsByDates(dates).associateBy { it.date }
         
         val toInsert = ArrayList<MealEntity>()
@@ -138,7 +128,7 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
             val existing = existingEntities[date]
             
             val merged = if (existing != null) {
-                // Go: models.Meal.Merge 로직 구현
+                // 기존 데이터가 있으면 병합 (Go: models.Meal.Merge)
                 MealEntity(
                     date = date,
                     breakfast = mergeMenuItems(existing.breakfast, newMeal.breakfast),
@@ -148,7 +138,7 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                     sumCal = if (newMeal.sumCal.isNotBlank()) newMeal.sumCal else existing.sumCal
                 )
             } else {
-                // 신규 데이터도 내부적으로 중복 정리 필요 (processRows에서 단순 concat 했으므로)
+                // 신규 데이터도 내부적으로 중복 정리 및 정렬 필요 (processRows에서 콤마로 단순 연결했으므로)
                 MealEntity(
                     date = date,
                     breakfast = mergeMenuItems("", newMeal.breakfast),
@@ -161,31 +151,45 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
             toInsert.add(merged)
         }
         
-        mealDao.insertMeals(toInsert)
+        if (toInsert.isNotEmpty()) {
+            mealDao.insertMeals(toInsert)
+        }
     }
 
-    // Go: mergeMenuItems
+    // Go: mergeMenuItems (split -> trim -> dedup -> sort -> join)
     private fun mergeMenuItems(oldStr: String, newStr: String): String {
-        if (oldStr.isBlank()) return sortAndJoin(newStr) // 신규 데이터도 정렬 필요
-        if (newStr.isBlank()) return sortAndJoin(oldStr)
-
-        val combined = "$oldStr, $newStr"
-        return sortAndJoin(combined)
-    }
-
-    private fun sortAndJoin(raw: String): String {
-        if (raw.isBlank()) return ""
+        // Go 코드:
+        // if oldStr == "" { return newStr } -> 하지만 newStr이 정렬 안되어있을 수 있으므로 항상 정렬 로직 통과
+        // if newStr == "" { return oldStr }
         
-        val items = raw.split(",")
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-            .toSet() // 중복 제거
+        // 둘 다 비어있으면 빈 문자열
+        if (oldStr.isBlank() && newStr.isBlank()) return ""
+
+        val items = HashSet<String>()
         
-        return items.sorted().joinToString(", ") // 정렬 후 병합
+        // Old String 처리
+        if (oldStr.isNotBlank()) {
+            oldStr.split(",").forEach { 
+                val trimmed = it.trim()
+                if (trimmed.isNotEmpty()) items.add(trimmed)
+            }
+        }
+        
+        // New String 처리
+        if (newStr.isNotBlank()) {
+            newStr.split(",").forEach {
+                val trimmed = it.trim()
+                if (trimmed.isNotEmpty()) items.add(trimmed)
+            }
+        }
+
+        // 정렬 및 조립
+        return items.sorted().joinToString(", ")
     }
 
     // Go: parseDate
     private fun parseDate(dateStr: String): String? {
+        // Go: strings.Split(dateStr, "(")[0]
         val dateRaw = dateStr.split("(")[0].trim()
         
         // Go formats: "2006-01-02", "2006.01.02", "20060102"
