@@ -122,7 +122,6 @@ fun MealScreen(viewModel: MainViewModel) {
             }
         }
 
-        // 로그 보기 버튼 (우측 상단)
         TextButton(
             onClick = { showLogs = true },
             modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
@@ -154,7 +153,7 @@ fun LogViewerDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
                         .background(Color(0xFFEEEEEE))
                         .padding(4.dp)
                 ) {
-                    items(logs) {
+                    items(logs) { log ->
                         Text(
                             text = log,
                             fontSize = 10.sp,
@@ -261,6 +260,16 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
             MealCard("중식 ☀️", state.meal.lunch)
             Spacer(modifier = Modifier.height(16.dp))
             MealCard("석식 🌙", state.meal.dinner)
+            
+            // 부식 및 칼로리 정보 (있을 경우에만)
+            if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
+                Spacer(modifier = Modifier.height(16.dp))
+                MealCard("부식 🥛", state.meal.adspcfd)
+            }
+            if (state.meal.sumCal.isNotBlank()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text("총 칼로리: ${state.meal.sumCal} kcal", color = Color.Gray)
+            }
         }
 
         Spacer(modifier = Modifier.height(32.dp))

@@ -10,8 +10,8 @@ interface MealDao {
     @Query("SELECT * FROM meals WHERE date = :date")
     suspend fun getMeal(date: String): MealEntity?
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertMeal(meal: MealEntity)
+    @Query("SELECT * FROM meals WHERE date IN (:dates)")
+    suspend fun getMealsByDates(dates: List<String>): List<MealEntity>
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMeals(meals: List<MealEntity>)

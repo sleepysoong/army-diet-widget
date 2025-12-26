@@ -2,18 +2,10 @@ package com.sleepysoong.armydiet.data.remote
 
 import com.google.gson.annotations.SerializedName
 
+// Go: MNDApiResponse
 data class MndResponse(
     @SerializedName("DS_TB_MNDT_DATEBYMLSVC_7369")
-    val service: MndService?,
-    @SerializedName("RESULT")
-    val result: MndResult?
-)
-
-data class MndResult(
-    @SerializedName("CODE")
-    val code: String?,
-    @SerializedName("MESSAGE")
-    val message: String?
+    val service: MndService?
 )
 
 data class MndService(
@@ -23,17 +15,18 @@ data class MndService(
     val rows: List<MndRow>?
 )
 
+// Go: json tag와 일치
 data class MndRow(
     @SerializedName("dates")
     val dates: String?,
     @SerializedName("brst")
-    val brst: String?, // 조식
+    val brst: String?,
     @SerializedName("lunc")
-    val lunc: String?, // 중식
+    val lunc: String?,
     @SerializedName("dinr")
-    val dinr: String?, // 석식
+    val dinr: String?,
     @SerializedName("adspcfd")
-    val adspcfd: String?, // 부식
+    val adspcfd: String?,
     @SerializedName("sum_cal")
     val sumCal: String?
 )

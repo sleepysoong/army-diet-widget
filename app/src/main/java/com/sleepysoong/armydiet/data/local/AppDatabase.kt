@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [MealEntity::class], version = 1, exportSchema = false)
+@Database(entities = [MealEntity::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun mealDao(): MealDao
 
@@ -19,7 +19,9 @@ abstract class AppDatabase : RoomDatabase() {
                     context.applicationContext,
                     AppDatabase::class.java,
                     "meal_database"
-                ).build()
+                )
+                .fallbackToDestructiveMigration() // 스키마 변경 시 DB 초기화
+                .build()
                 INSTANCE = instance
                 instance
             }

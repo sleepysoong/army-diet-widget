@@ -31,7 +31,7 @@ class MainViewModel(
     private val _uiState = MutableStateFlow<MealUiState>(MealUiState.Loading)
     val uiState: StateFlow<MealUiState> = _uiState.asStateFlow()
 
-    val debugLogs = DebugLogger.logs // UI에 노출
+    val debugLogs = DebugLogger.logs
 
     private var currentApiKey: String? = null
 
@@ -44,10 +44,8 @@ class MainViewModel(
             val key = preferences.apiKey.first()
             if (key.isNullOrBlank()) {
                 _uiState.value = MealUiState.ApiKeyMissing
-                DebugLogger.log("VM", "Key missing")
             } else {
                 currentApiKey = key
-                DebugLogger.log("VM", "Key found, loading...")
                 loadMeal()
             }
         }
@@ -55,7 +53,6 @@ class MainViewModel(
 
     fun saveApiKey(key: String) {
         viewModelScope.launch {
-            DebugLogger.log("VM", "Saving new key")
             preferences.saveApiKey(key)
             currentApiKey = key
             loadMeal()
@@ -71,7 +68,7 @@ class MainViewModel(
             }
 
             _uiState.value = MealUiState.Loading
-            DebugLogger.log("VM", "Loading meals...")
+            DebugLogger.log("VM", "Loading...")
             
             val nowTime = LocalTime.now()
             val nowDate = LocalDate.now()
@@ -85,38 +82,32 @@ class MainViewModel(
             val formatter = DateTimeFormatter.ofPattern("yyyyMMdd")
             val dateStr = targetDate.format(formatter)
             val displayDate = targetDate.format(DateTimeFormatter.ofPattern("M월 d일 (E)"))
-            DebugLogger.log("VM", "Target date: $dateStr")
+            DebugLogger.log("VM", "Target: $dateStr")
 
             repository.getMeal(dateStr).onSuccess { meal ->
                 if (meal != null) {
                     _uiState.value = MealUiState.Success(meal, displayDate)
-                    DebugLogger.log("VM", "Found local meal")
                 } else {
-                    DebugLogger.log("VM", "Local miss, syncing...")
+                    DebugLogger.log("VM", "Syncing...")
                     try {
                         repository.syncRecentData(key)
                         repository.getMeal(dateStr).onSuccess { newMeal ->
                             _uiState.value = MealUiState.Success(newMeal, displayDate)
-                            DebugLogger.log("VM", "Sync success, meal found? ${newMeal != null}")
                         }.onFailure {
                             _uiState.value = MealUiState.Error("데이터 동기화 후 조회 실패")
-                            DebugLogger.log("VM", "Post-sync lookup fail")
                         }
                     } catch (e: Exception) {
-                        _uiState.value = MealUiState.Error("동기화 실패: ${e.message}\n(API Key를 확인해주세요)")
-                        DebugLogger.log("VM", "Sync fail: ${e.message}")
+                        _uiState.value = MealUiState.Error("동기화 실패: ${e.message}")
                     }
                 }
             }.onFailure { e ->
-                _uiState.value = MealUiState.Error("로컬 데이터 조회 실패: ${e.message}")
-                DebugLogger.log("VM", "Local DB error: ${e.message}")
+                _uiState.value = MealUiState.Error("DB 조회 실패: ${e.message}")
             }
         }
     }
     
     fun resetApiKey() {
         viewModelScope.launch {
-            DebugLogger.log("VM", "Resetting key")
             preferences.saveApiKey("")
             currentApiKey = null
             _uiState.value = MealUiState.ApiKeyMissing
