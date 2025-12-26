@@ -26,6 +26,16 @@
             </intent-filter>
         </activity>
 
+        <!-- 위젯 설정 액티비티 -->
+        <activity
+            android:name=".widget.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.ArmyDiet">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- 위젯 리시버 -->
         <receiver
             android:name=".widget.MealWidgetReceiver"
