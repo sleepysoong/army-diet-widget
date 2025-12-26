@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 다크 테마 위젯 배경 -->
+    <color name="widget_background">#1E1E1E</color>
+    <color name="widget_card">#2D2D2D</color>
+    <color name="widget_card_active">#1B3320</color>
+    <color name="widget_primary">#81C784</color>
+    <color name="widget_text">#E0E0E0</color>
+    <color name="widget_text_secondary">#9E9E9E</color>
+</resources>

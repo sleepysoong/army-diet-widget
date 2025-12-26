@@ -42,9 +42,9 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         val database = AppDatabase.getDatabase(applicationContext)
-        val repository = MealRepository(database.mealDao(), NetworkModule.api)
         val preferences = AppPreferences(applicationContext)
-        val viewModelFactory = MainViewModelFactory(repository, preferences)
+        val repository = MealRepository(database.mealDao(), NetworkModule.api, preferences)
+        val viewModelFactory = MainViewModelFactory(repository, preferences, applicationContext)
 
         setupWorker()
 

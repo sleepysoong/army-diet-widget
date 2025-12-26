@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 라이트 테마 위젯 배경 -->
+    <color name="widget_background">#F5F5F5</color>
+    <color name="widget_card">#FFFFFF</color>
+    <color name="widget_card_active">#E8F5E9</color>
+    <color name="widget_primary">#2E7D32</color>
+    <color name="widget_text">#212121</color>
+    <color name="widget_text_secondary">#757575</color>
+</resources>

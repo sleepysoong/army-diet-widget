@@ -1,5 +1,6 @@
 package com.sleepysoong.armydiet.ui
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -7,6 +8,7 @@ import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.domain.MealRepository
 import com.sleepysoong.armydiet.util.DebugLogger
+import com.sleepysoong.armydiet.widget.MealWidgetReceiver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -25,7 +27,8 @@ sealed class MealUiState {
 
 class MainViewModel(
     private val repository: MealRepository,
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MealUiState>(MealUiState.Loading)
@@ -89,6 +92,7 @@ class MainViewModel(
             repository.getMeal(dateStr).onSuccess { meal ->
                 if (meal != null) {
                     _uiState.value = MealUiState.Success(meal, displayDate)
+                    updateWidget()
                 } else {
                     DebugLogger.log("VM", "Local miss, triggering load...")
                     try {
@@ -102,6 +106,7 @@ class MainViewModel(
                         // 다시 조회
                         repository.getMeal(dateStr).onSuccess { newMeal ->
                             _uiState.value = MealUiState.Success(newMeal, displayDate)
+                            updateWidget()
                         }.onFailure {
                             _uiState.value = MealUiState.Error("동기화 후에도 데이터가 없습니다.")
                         }
@@ -113,6 +118,10 @@ class MainViewModel(
                 _uiState.value = MealUiState.Error("DB 조회 실패: ${e.message}")
             }
         }
+    }
+    
+    private fun updateWidget() {
+        MealWidgetReceiver.updateAllWidgets(appContext)
     }
     
     fun resetApiKey() {
@@ -131,12 +140,13 @@ class MainViewModel(
 
 class MainViewModelFactory(
     private val repository: MealRepository,
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    private val appContext: Context
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
             @Suppress("UNCHECKED_CAST")
-            return MainViewModel(repository, preferences) as T
+            return MainViewModel(repository, preferences, appContext) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")
     }

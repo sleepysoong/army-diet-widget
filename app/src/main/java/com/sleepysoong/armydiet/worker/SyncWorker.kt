@@ -8,6 +8,7 @@ import com.sleepysoong.armydiet.data.local.AppDatabase
 import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.remote.NetworkModule
 import com.sleepysoong.armydiet.domain.MealRepository
+import com.sleepysoong.armydiet.widget.MealWidgetReceiver
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
 import java.io.IOException
@@ -28,6 +29,10 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
             // 백그라운드 작업은 이어서 받기 (reset=false)
             repository.load(apiKey, reset = false)
+            
+            // 위젯 업데이트
+            MealWidgetReceiver.updateAllWidgets(applicationContext)
+            
             Result.success()
         } catch (e: HttpException) {
             Log.e("SyncWorker", "HTTP Error during sync", e)
