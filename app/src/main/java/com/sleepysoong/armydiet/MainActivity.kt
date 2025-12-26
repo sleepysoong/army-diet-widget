@@ -141,6 +141,7 @@ fun MealScreen(viewModel: MainViewModel) {
 @Composable
 fun LogViewerDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
     val logs by viewModel.debugLogs.collectAsStateWithLifecycle()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -171,8 +172,18 @@ fun LogViewerDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
             }
         },
         dismissButton = {
-            TextButton(onClick = { viewModel.clearLogs() }) {
-                Text("초기화")
+            Row {
+                TextButton(onClick = { viewModel.clearLogs() }) {
+                    Text("초기화")
+                }
+                TextButton(onClick = {
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                    val clip = android.content.ClipData.newPlainText("Debug Logs", logs.joinToString("\n"))
+                    clipboard.setPrimaryClip(clip)
+                    android.widget.Toast.makeText(context, "로그가 복사되었습니다.", android.widget.Toast.LENGTH_SHORT).show()
+                }) {
+                    Text("복사")
+                }
             }
         }
     )
