@@ -3,7 +3,10 @@ package com.sleepysoong.armydiet
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -14,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -66,7 +70,6 @@ class MainActivity : ComponentActivity() {
             .setConstraints(constraints)
             .build()
 
-        // 정책을 UPDATE로 변경하여 제약조건 등이 변경되면 작업을 갱신하도록 함
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "daily_meal_sync",
             ExistingPeriodicWorkPolicy.UPDATE,
@@ -77,46 +80,103 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MealScreen(viewModel: MainViewModel) {
-    // Lifecycle-aware collection
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showLogs by remember { mutableStateOf(false) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        when (val state = uiState) {
-            is MealUiState.ApiKeyMissing -> {
-                ApiKeyInputScreen(onKeyEntered = { viewModel.saveApiKey(it) })
-            }
-            is MealUiState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            when (val state = uiState) {
+                is MealUiState.ApiKeyMissing -> {
+                    ApiKeyInputScreen(onKeyEntered = { viewModel.saveApiKey(it) })
                 }
-            }
-            is MealUiState.Error -> {
-                Column(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.Center,
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Text(text = state.message, color = Color.Red, textAlign = TextAlign.Center)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Button(onClick = { viewModel.loadMeal() }) {
-                        Text("다시 시도")
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    TextButton(onClick = { viewModel.resetApiKey() }) {
-                        Text("API Key 재설정")
+                is MealUiState.Loading -> {
+                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
-            }
-            is MealUiState.Success -> {
-                MealContent(state, viewModel)
+                is MealUiState.Error -> {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(text = state.message, color = Color.Red, textAlign = TextAlign.Center)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Button(onClick = { viewModel.loadMeal() }) {
+                            Text("다시 시도")
+                        }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        TextButton(onClick = { viewModel.resetApiKey() }) {
+                            Text("API Key 재설정")
+                        }
+                    }
+                }
+                is MealUiState.Success -> {
+                    MealContent(state, viewModel)
+                }
             }
         }
+
+        // 로그 보기 버튼 (우측 상단)
+        TextButton(
+            onClick = { showLogs = true },
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
+        ) {
+            Text("LOGS")
+        }
+
+        if (showLogs) {
+            LogViewerDialog(
+                viewModel = viewModel,
+                onDismiss = { showLogs = false }
+            )
+        }
     }
+}
+
+@Composable
+fun LogViewerDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
+    val logs by viewModel.debugLogs.collectAsStateWithLifecycle()
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Debug Logs") },
+        text = {
+            Column {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .background(Color(0xFFEEEEEE))
+                        .padding(4.dp)
+                ) {
+                    items(logs) {
+                        Text(
+                            text = log,
+                            fontSize = 10.sp,
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(vertical = 2.dp)
+                        )
+                        Divider(color = Color.LightGray)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { viewModel.clearLogs() }) {
+                Text("초기화")
+            }
+        }
+    )
 }
 
 @Composable
