@@ -2,6 +2,7 @@ package com.sleepysoong.armydiet.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -12,7 +13,9 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.*
 import androidx.glance.layout.*
 import androidx.glance.text.*
+import androidx.glance.unit.ColorProvider
 import com.sleepysoong.armydiet.MainActivity
+import com.sleepysoong.armydiet.R
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
 import kotlinx.coroutines.Dispatchers
@@ -25,27 +28,32 @@ import java.time.format.DateTimeFormatter
 class MealWidget : GlanceAppWidget() {
 
     companion object {
-        private val SIZE_SMALL = DpSize(100.dp, 48.dp)
-        private val SIZE_MEDIUM = DpSize(180.dp, 100.dp)
-        private val SIZE_LARGE = DpSize(250.dp, 180.dp)
+        private val SIZE_COMPACT = DpSize(110.dp, 60.dp)
+        private val SIZE_SMALL = DpSize(180.dp, 110.dp)
+        private val SIZE_MEDIUM = DpSize(250.dp, 160.dp)
+        private val SIZE_LARGE = DpSize(320.dp, 220.dp)
+        private val SIZE_EXPANDED = DpSize(400.dp, 300.dp)
+        
         private val ALLERGY_REGEX = Regex("\\([0-9.]+\\)")
     }
 
-    override val sizeMode = SizeMode.Responsive(setOf(SIZE_SMALL, SIZE_MEDIUM, SIZE_LARGE))
+    override val sizeMode = SizeMode.Responsive(
+        setOf(SIZE_COMPACT, SIZE_SMALL, SIZE_MEDIUM, SIZE_LARGE, SIZE_EXPANDED)
+    )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
         val data = loadWidgetData(context)
         
         provideContent {
             GlanceTheme {
-                WidgetContent(data = data, size = LocalSize.current)
+                AdaptiveWidgetContent(data = data, size = LocalSize.current)
             }
         }
     }
 
     private suspend fun loadWidgetData(context: Context): WidgetData = withContext(Dispatchers.IO) {
         val container = AppContainer.getInstance(context)
-        val config = WidgetConfig(context) // 새 인스턴스로 항상 최신 값 읽기
+        val config = WidgetConfig(context)
         
         val meal = runCatching {
             val dateStr = getTargetDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
@@ -54,10 +62,9 @@ class MealWidget : GlanceAppWidget() {
         
         WidgetData(
             meal = meal,
-            displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M/d")),
+            displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M/d (E)")),
             currentMeal = getCurrentMealType(),
             fontScale = config.fontScale.first(),
-            bgAlpha = config.backgroundAlpha.first(),
             showCalories = config.showCalories.first()
         )
     }
@@ -80,7 +87,6 @@ private data class WidgetData(
     val displayDate: String,
     val currentMeal: MealType,
     val fontScale: Float,
-    val bgAlpha: Float,
     val showCalories: Boolean
 )
 
@@ -96,159 +102,273 @@ enum class MealType(val label: String) {
     DINNER("석식")
 }
 
-@Composable
-private fun WidgetContent(data: WidgetData, size: DpSize) {
-    val layout = when {
-        size.width < 180.dp || size.height < 100.dp -> WidgetLayout.SMALL
-        size.width >= 250.dp && size.height >= 180.dp -> WidgetLayout.LARGE
-        else -> WidgetLayout.MEDIUM
-    }
+// Adaptive sizing based on widget dimensions
+private data class AdaptiveSize(
+    val titleFont: TextUnit,
+    val labelFont: TextUnit,
+    val contentFont: TextUnit,
+    val tagPadding: Dp,
+    val tagRadius: Dp,
+    val spacing: Dp,
+    val outerPadding: Dp,
+    val maxMenuLines: Int,
+    val showLabel: Boolean,
+    val isCompact: Boolean
+)
+
+private fun calculateAdaptiveSize(size: DpSize, fontScale: Float): AdaptiveSize {
+    val width = size.width
+    val height = size.height
     
-    Box(
+    return when {
+        // Compact: 현재 끼니만
+        width < 180.dp || height < 110.dp -> AdaptiveSize(
+            titleFont = (11 * fontScale).sp,
+            labelFont = (10 * fontScale).sp,
+            contentFont = (10 * fontScale).sp,
+            tagPadding = 4.dp,
+            tagRadius = 6.dp,
+            spacing = 4.dp,
+            outerPadding = 8.dp,
+            maxMenuLines = 2,
+            showLabel = false,
+            isCompact = true
+        )
+        // Small: 3끼 한 줄씩
+        width < 250.dp || height < 160.dp -> AdaptiveSize(
+            titleFont = (12 * fontScale).sp,
+            labelFont = (11 * fontScale).sp,
+            contentFont = (11 * fontScale).sp,
+            tagPadding = 5.dp,
+            tagRadius = 8.dp,
+            spacing = 5.dp,
+            outerPadding = 10.dp,
+            maxMenuLines = 1,
+            showLabel = true,
+            isCompact = false
+        )
+        // Medium: 3끼 2줄씩
+        width < 320.dp || height < 220.dp -> AdaptiveSize(
+            titleFont = (13 * fontScale).sp,
+            labelFont = (12 * fontScale).sp,
+            contentFont = (12 * fontScale).sp,
+            tagPadding = 6.dp,
+            tagRadius = 10.dp,
+            spacing = 6.dp,
+            outerPadding = 12.dp,
+            maxMenuLines = 2,
+            showLabel = true,
+            isCompact = false
+        )
+        // Large: 3끼 상세
+        width < 400.dp || height < 300.dp -> AdaptiveSize(
+            titleFont = (14 * fontScale).sp,
+            labelFont = (13 * fontScale).sp,
+            contentFont = (13 * fontScale).sp,
+            tagPadding = 8.dp,
+            tagRadius = 12.dp,
+            spacing = 8.dp,
+            outerPadding = 14.dp,
+            maxMenuLines = 3,
+            showLabel = true,
+            isCompact = false
+        )
+        // Expanded: Fold 등 대형 화면
+        else -> AdaptiveSize(
+            titleFont = (16 * fontScale).sp,
+            labelFont = (14 * fontScale).sp,
+            contentFont = (14 * fontScale).sp,
+            tagPadding = 10.dp,
+            tagRadius = 14.dp,
+            spacing = 10.dp,
+            outerPadding = 16.dp,
+            maxMenuLines = 4,
+            showLabel = true,
+            isCompact = false
+        )
+    }
+}
+
+@Composable
+private fun AdaptiveWidgetContent(data: WidgetData, size: DpSize) {
+    val adaptive = calculateAdaptiveSize(size, data.fontScale)
+    
+    Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.background)
-            .cornerRadius(12.dp)
+            .cornerRadius(16.dp)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(8.dp)
+            .padding(adaptive.outerPadding)
     ) {
-        when (layout) {
-            WidgetLayout.SMALL -> SmallLayout(data)
-            WidgetLayout.MEDIUM -> MediumLayout(data)
-            WidgetLayout.LARGE -> LargeLayout(data)
-        }
-    }
-}
-
-private enum class WidgetLayout { SMALL, MEDIUM, LARGE }
-
-// 기본 폰트 크기 증가
-private fun titleSize(scale: Float): TextUnit = (12 * scale).sp
-private fun labelSize(scale: Float): TextUnit = (11 * scale).sp
-private fun contentSize(scale: Float): TextUnit = (11 * scale).sp
-private fun smallSize(scale: Float): TextUnit = (10 * scale).sp
-
-@Composable
-private fun SmallLayout(data: WidgetData) {
-    Column(
-        modifier = GlanceModifier.fillMaxSize(),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = data.currentMeal.label,
-            style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = labelSize(data.fontScale),
-                fontWeight = FontWeight.Bold
-            )
-        )
-        Spacer(modifier = GlanceModifier.height(2.dp))
-        Text(
-            text = getMealContent(data.meal, data.currentMeal),
-            style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = contentSize(data.fontScale)
-            ),
-            maxLines = 3
-        )
-    }
-}
-
-@Composable
-private fun MediumLayout(data: WidgetData) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
+        // Header: 날짜
         Text(
             text = data.displayDate,
             style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = titleSize(data.fontScale),
+                color = GlanceTheme.colors.primary,
+                fontSize = adaptive.titleFont,
                 fontWeight = FontWeight.Bold
             )
         )
-        Spacer(modifier = GlanceModifier.height(4.dp))
         
-        MealType.entries.forEach { type ->
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = type.label,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        fontSize = labelSize(data.fontScale),
-                        fontWeight = if (type == data.currentMeal) FontWeight.Bold else FontWeight.Normal
-                    ),
-                    modifier = GlanceModifier.width(30.dp)
-                )
-                Text(
-                    text = getMealContent(data.meal, type),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        fontSize = contentSize(data.fontScale)
-                    ),
-                    maxLines = 1
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun LargeLayout(data: WidgetData) {
-    Column(modifier = GlanceModifier.fillMaxSize()) {
-        Text(
-            text = data.displayDate,
-            style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = titleSize(data.fontScale),
-                fontWeight = FontWeight.Bold
-            )
-        )
-        Spacer(modifier = GlanceModifier.height(4.dp))
+        Spacer(modifier = GlanceModifier.height(adaptive.spacing))
         
-        MealType.entries.forEach { type ->
-            val isActive = type == data.currentMeal
-            Column(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .background(if (isActive) GlanceTheme.colors.primaryContainer else GlanceTheme.colors.surfaceVariant)
-                    .cornerRadius(4.dp)
-                    .padding(6.dp)
-            ) {
-                Text(
-                    text = type.label,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        fontSize = labelSize(data.fontScale),
-                        fontWeight = FontWeight.Bold
-                    )
-                )
-                Text(
-                    text = getMealContent(data.meal, type),
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        fontSize = contentSize(data.fontScale)
-                    ),
-                    maxLines = 3
-                )
-            }
-            if (type != MealType.DINNER) Spacer(modifier = GlanceModifier.height(3.dp))
+        if (adaptive.isCompact) {
+            // Compact: 현재 끼니만 표시
+            CompactMealContent(data, adaptive)
+        } else {
+            // Standard: 모든 끼니 표시
+            StandardMealContent(data, adaptive)
         }
         
-        if (data.showCalories) {
-            val calories = formatCalories(data.meal?.sumCal)
-            if (calories != null) {
-                Spacer(modifier = GlanceModifier.height(4.dp))
+        // 칼로리
+        if (data.showCalories && !adaptive.isCompact) {
+            formatCalories(data.meal?.sumCal)?.let { cal ->
+                Spacer(modifier = GlanceModifier.height(adaptive.spacing))
                 Text(
-                    text = calories,
+                    text = cal,
                     style = TextStyle(
                         color = GlanceTheme.colors.secondary,
-                        fontSize = smallSize(data.fontScale)
+                        fontSize = (adaptive.contentFont.value * 0.85f).sp
                     )
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun CompactMealContent(data: WidgetData, adaptive: AdaptiveSize) {
+    val content = getMealContent(data.meal, data.currentMeal)
+    
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        // 현재 끼니 라벨
+        MealTag(
+            label = data.currentMeal.label,
+            isActive = true,
+            adaptive = adaptive
+        )
+        Spacer(modifier = GlanceModifier.height(4.dp))
+        Text(
+            text = content,
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = adaptive.contentFont
+            ),
+            maxLines = adaptive.maxMenuLines
+        )
+    }
+}
+
+@Composable
+private fun StandardMealContent(data: WidgetData, adaptive: AdaptiveSize) {
+    Column(modifier = GlanceModifier.fillMaxWidth()) {
+        MealType.entries.forEach { type ->
+            val isActive = type == data.currentMeal
+            val content = getMealContent(data.meal, type)
+            
+            MealRow(
+                type = type,
+                content = content,
+                isActive = isActive,
+                adaptive = adaptive
+            )
+            
+            if (type != MealType.DINNER) {
+                Spacer(modifier = GlanceModifier.height(adaptive.spacing))
+            }
+        }
+    }
+}
+
+@Composable
+private fun MealRow(
+    type: MealType,
+    content: String,
+    isActive: Boolean,
+    adaptive: AdaptiveSize
+) {
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        verticalAlignment = Alignment.Top
+    ) {
+        // 끼니 태그
+        MealTag(label = type.label, isActive = isActive, adaptive = adaptive)
+        
+        Spacer(modifier = GlanceModifier.width(8.dp))
+        
+        // 메뉴 내용 (개별 태그로)
+        MenuChips(content = content, adaptive = adaptive)
+    }
+}
+
+@Composable
+private fun MealTag(label: String, isActive: Boolean, adaptive: AdaptiveSize) {
+    Box(
+        modifier = GlanceModifier
+            .background(
+                if (isActive) GlanceTheme.colors.primary
+                else ColorProvider(R.color.widget_tag_bg)
+            )
+            .cornerRadius(adaptive.tagRadius)
+            .padding(horizontal = adaptive.tagPadding, vertical = (adaptive.tagPadding.value * 0.6f).dp)
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                color = if (isActive) GlanceTheme.colors.onPrimary else GlanceTheme.colors.onBackground,
+                fontSize = adaptive.labelFont,
+                fontWeight = FontWeight.Medium
+            )
+        )
+    }
+}
+
+@Composable
+private fun MenuChips(content: String, adaptive: AdaptiveSize) {
+    // 메뉴를 개별 칩으로 표시 (노션 스타일)
+    val items = content.split(",")
+        .map { it.trim() }
+        .filter { it.isNotEmpty() && it != "-" }
+        .take(adaptive.maxMenuLines * 3) // 라인 수에 맞게 제한
+    
+    if (items.isEmpty()) {
+        MenuChip(text = "-", adaptive = adaptive)
+        return
+    }
+    
+    Row(
+        modifier = GlanceModifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.Start
+    ) {
+        // Glance에서 FlowRow 없으므로 단순 Row로 처리
+        items.take(4).forEachIndexed { index, item ->
+            if (index > 0) Spacer(modifier = GlanceModifier.width(4.dp))
+            MenuChip(text = item.take(8), adaptive = adaptive) // 길이 제한
+        }
+        if (items.size > 4) {
+            Spacer(modifier = GlanceModifier.width(4.dp))
+            MenuChip(text = "+${items.size - 4}", adaptive = adaptive)
+        }
+    }
+}
+
+@Composable
+private fun MenuChip(text: String, adaptive: AdaptiveSize) {
+    Box(
+        modifier = GlanceModifier
+            .background(ColorProvider(R.color.widget_chip_bg))
+            .cornerRadius((adaptive.tagRadius.value * 0.7f).dp)
+            .padding(horizontal = (adaptive.tagPadding.value * 0.8f).dp, vertical = (adaptive.tagPadding.value * 0.4f).dp)
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(
+                color = GlanceTheme.colors.onSurfaceVariant,
+                fontSize = (adaptive.contentFont.value * 0.9f).sp
+            ),
+            maxLines = 1
+        )
     }
 }
 
@@ -267,7 +387,6 @@ private fun getMealContent(meal: MealEntity?, type: MealType): String {
 
 private fun formatCalories(sumCal: String?): String? {
     if (sumCal.isNullOrBlank()) return null
-    // "1234.56kcal" or "1234.56" -> "1235 kcal"
     val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
     val value = cleaned.toDoubleOrNull() ?: return null
     return "${value.toInt()} kcal"
