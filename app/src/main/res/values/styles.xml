@@ -1,7 +1,7 @@
 <resources>
     <style name="Theme.ArmyDiet" parent="android:Theme.Material.Light.NoActionBar" />
     
-    <string name="app_name">식냥</string>
-    <string name="widget_name">식냥 위젯</string>
+    <string name="app_name">오늘의 밥</string>
+    <string name="widget_name">오늘의 밥 위젯</string>
     <string name="widget_description">오늘/내일 급식 메뉴를 홈 화면에서 확인하세요</string>
 </resources>
