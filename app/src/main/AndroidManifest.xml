@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
+        android:name=".ArmyDietApp"
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
@@ -26,7 +27,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 위젯 설정 액티비티 -->
         <activity
             android:name=".widget.WidgetConfigActivity"
             android:exported="true"
@@ -36,7 +36,6 @@
             </intent-filter>
         </activity>
 
-        <!-- 위젯 리시버 -->
         <receiver
             android:name=".widget.MealWidgetReceiver"
             android:exported="true"

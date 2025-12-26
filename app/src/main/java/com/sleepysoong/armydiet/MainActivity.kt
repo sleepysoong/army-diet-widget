@@ -20,10 +20,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
-import com.sleepysoong.armydiet.data.local.AppDatabase
-import com.sleepysoong.armydiet.data.local.AppPreferences
-import com.sleepysoong.armydiet.data.remote.NetworkModule
-import com.sleepysoong.armydiet.domain.MealRepository
+import com.sleepysoong.armydiet.di.AppContainer
 import com.sleepysoong.armydiet.ui.MainViewModel
 import com.sleepysoong.armydiet.ui.MainViewModelFactory
 import com.sleepysoong.armydiet.ui.MealUiState
@@ -32,15 +29,15 @@ import com.sleepysoong.armydiet.worker.SyncWorker
 import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
+    
+    private val container: AppContainer by lazy {
+        (application as ArmyDietApp).container
+    }
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
-        val database = AppDatabase.getDatabase(applicationContext)
-        val preferences = AppPreferences(applicationContext)
-        val repository = MealRepository(database.mealDao(), NetworkModule.api, preferences)
-        val viewModelFactory = MainViewModelFactory(repository, preferences, applicationContext)
-
-        setupWorker()
+        
+        scheduleSyncWorker()
 
         setContent {
             AppTheme {
@@ -48,25 +45,34 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
+                    val factory = MainViewModelFactory(
+                        container.mealRepository,
+                        container.preferences,
+                        applicationContext
+                    )
+                    val viewModel: MainViewModel = viewModel(factory = factory)
                     MealScreen(viewModel)
                 }
             }
         }
     }
 
-    private fun setupWorker() {
+    private fun scheduleSyncWorker() {
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
 
-        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(1, TimeUnit.DAYS)
+        val syncRequest = PeriodicWorkRequestBuilder<SyncWorker>(
+            repeatInterval = 12,
+            repeatIntervalTimeUnit = TimeUnit.HOURS
+        )
             .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.MINUTES)
             .build()
 
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            "daily_meal_sync",
-            ExistingPeriodicWorkPolicy.UPDATE,
+            SyncWorker.WORK_NAME,
+            ExistingPeriodicWorkPolicy.KEEP,
             syncRequest
         )
     }
@@ -78,7 +84,7 @@ fun MealScreen(viewModel: MainViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         when (val state = uiState) {
-            is MealUiState.ApiKeyMissing -> ApiKeyInputScreen { viewModel.saveApiKey(it) }
+            is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
             is MealUiState.Loading -> LoadingScreen()
             is MealUiState.Error -> ErrorScreen(state.message, viewModel::loadMeal, viewModel::resetApiKey)
             is MealUiState.Success -> MealContent(state, viewModel)
