@@ -1,2 +1,54 @@
+# Gemini
 .gemini/
 gha-creds-*.json
+
+# Android SDK (Local installation)
+android-sdk/
+
+# API Samples & Test files
+api_*.json
+*.json
+!app/src/main/res/**/*.json
+!google-services.json
+
+# Built variants
+*.apk
+*.aar
+*.ap_
+*.aab
+
+# Built binaries
+*.dex
+*.class
+
+# Android Studio / IntelliJ
+.idea/
+*.iml
+*.iws
+.project
+.settings/
+.classpath
+
+# Gradle
+.gradle/
+build/
+app/build/
+gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+
+# Local properties (SDK path, etc.)
+local.properties
+
+# Secrets
+*.jks
+*.keystore
+*.p12
+google-services.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Misc
+*.log
+captures/
