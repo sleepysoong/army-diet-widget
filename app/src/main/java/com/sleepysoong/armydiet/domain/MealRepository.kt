@@ -1,26 +1,37 @@
 package com.sleepysoong.armydiet.domain
 
 import android.util.Log
+import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealDao
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.data.remote.MndApi
 import com.sleepysoong.armydiet.data.remote.MndRow
 import com.sleepysoong.armydiet.util.DebugLogger
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
-class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
+class MealRepository(
+    private val mealDao: MealDao,
+    private val api: MndApi,
+    private val preferences: AppPreferences
+) {
 
-    // (1), (1.2), (1.2.3) 등 숫자와 점으로 구성된 알레르기 정보 제거
     private val allergyRegex = Regex("\\([0-9.]+\\)")
     private val dateParseRegex = Regex("\\(.*?\\)")
+
+    // 24시간 (ms)
+    private val SYNC_INTERVAL = 24 * 60 * 60 * 1000L 
 
     suspend fun getMeal(date: String): Result<MealEntity?> {
         return withContext(Dispatchers.IO) {
             try {
+                // 1. 자동 동기화 체크
+                checkAndLoad()
+
                 DebugLogger.log("Repo", "Getting meal for $date")
                 val meal = mealDao.getMeal(date)
                 
@@ -33,7 +44,10 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                     )
                     Result.success(cleanMeal)
                 } else {
-                    Result.success(null)
+                    // 데이터가 없으면 강제 로드 시도 (사용자 경험 향상)
+                    // 하지만 무한 루프 방지를 위해 여기서 직접 호출하진 않고 null 반환
+                    // ViewModel에서 "데이터 없음" -> "동기화 버튼" 유도
+                    Result.success(null) 
                 }
             } catch (e: Exception) {
                 DebugLogger.log("Repo", "Get Error: ${e.message}")
@@ -42,47 +56,92 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
         }
     }
 
-    suspend fun syncRecentData(apiKey: String) {
+    private suspend fun checkAndLoad() {
+        val lastTs = preferences.lastCheckedTimestamp.first()
+        val currentTime = System.currentTimeMillis()
+
+        if (currentTime - lastTs > SYNC_INTERVAL) {
+            DebugLogger.log("Repo", "Auto-sync triggered (Time elapsed)")
+            // API Key가 있어야 로드 가능
+            val apiKey = preferences.apiKey.first()
+            if (!apiKey.isNullOrBlank()) {
+                load(apiKey, reset = false)
+            }
+        }
+    }
+
+    suspend fun load(apiKey: String, reset: Boolean) {
         withContext(Dispatchers.IO) {
             try {
-                DebugLogger.log("Repo", "Sync start")
-                
-                // 1. FetchTotalCount
+                DebugLogger.log("Repo", "Load start. Reset=$reset")
+
+                // 1. 전체 개수 확인
                 val countResponse = api.getMeals(apiKey, 1, 1)
                 val totalCount = countResponse.service?.listTotalCount ?: 0
-                DebugLogger.log("Repo", "Total count: $totalCount")
+                DebugLogger.log("Repo", "Total API count: $totalCount")
 
                 if (totalCount == 0) return@withContext
 
-                // Go 코드와 마찬가지로 인덱스 기반으로 가져옵니다.
-                // 데이터가 날짜순 정렬이 아니더라도, 전체 데이터 중 일부를 갱신하는 개념입니다.
-                // 여기서는 최근 100건을 가져옵니다.
-                val batchSize = 100
-                val startIdx = (totalCount - batchSize + 1).coerceAtLeast(1)
-                val endIdx = totalCount
+                // 2. 범위 설정
+                var startIdx = 1
+                val lastIdx = preferences.lastCheckedIndex.first()
+                
+                if (!reset && lastIdx > 0) {
+                    startIdx = lastIdx + 1
+                }
 
-                DebugLogger.log("Repo", "Fetching range $startIdx-$endIdx")
-                val response = api.getMeals(apiKey, startIdx, endIdx)
-                
-                val rows = response.service?.rows ?: emptyList()
-                if (rows.isEmpty()) return@withContext
+                // 이미 최신이면 종료
+                if (startIdx > totalCount) {
+                    DebugLogger.log("Repo", "Already up to date. (start $startIdx > total $totalCount)")
+                    preferences.updateSyncStatus(totalCount, System.currentTimeMillis())
+                    return@withContext
+                }
 
-                // 2. ProcessRows (메모리 상에서 병합)
-                val processedMap = processRows(rows)
+                // 3. 배치 다운로드 (한 번에 너무 많이 받으면 메모리 터질 수 있으니 1000개씩 끊어서)
+                val batchSize = 1000
+                // 최대 10만개 혹은 지난번 이후부터 끝까지
+                // 사용자가 "reset=false면 10000개까지만"이라고 했으나, 
+                // 인덱스가 뒤죽박죽일 수 있으니 가능한 끝까지(TotalCount) 가는게 안전.
+                // 다만 너무 많으면(예: 10만개) 오래 걸리니 제한을 둡니다.
                 
-                // 3. UpsertMeals (DB와 병합 후 저장)
-                upsertMeals(processedMap)
-                
-                DebugLogger.log("Repo", "Sync complete. Processed ${processedMap.size} dates.")
+                val limit = if (reset) 100000 else 10000 
+                var currentStart = startIdx
+                var processedCount = 0
+
+                while (currentStart <= totalCount && processedCount < limit) {
+                    val currentEnd = (currentStart + batchSize - 1).coerceAtMost(totalCount)
+                    DebugLogger.log("Repo", "Fetching batch $currentStart-$currentEnd")
+                    
+                    val response = api.getMeals(apiKey, currentStart, currentEnd)
+                    val rows = response.service?.rows ?: emptyList()
+                    
+                    if (rows.isNotEmpty()) {
+                        val processedMap = processRows(rows)
+                        upsertMeals(processedMap)
+                        processedCount += rows.size
+                    } else {
+                        // 데이터가 비어있으면 루프 중단 (API 오류 등)
+                        DebugLogger.log("Repo", "Empty batch, stopping")
+                        break
+                    }
+                    
+                    currentStart += batchSize
+                }
+
+                // 상태 업데이트
+                // 완전히 끝까지 다 받았을 때만 totalCount로 업데이트
+                // 제한(limit) 때문에 중간에 멈췄으면 currentStart - 1 저장
+                val newLastIndex = (currentStart - 1).coerceAtMost(totalCount)
+                preferences.updateSyncStatus(newLastIndex, System.currentTimeMillis())
+                DebugLogger.log("Repo", "Load complete. New index: $newLastIndex")
 
             } catch (e: Exception) {
-                DebugLogger.log("Repo", "Sync failed: ${e.message}")
+                DebugLogger.log("Repo", "Load failed: ${e.message}")
                 throw e
             }
         }
     }
 
-    // Go: DietService.processRows
     private fun processRows(rows: List<MndRow>): Map<String, MealEntity> {
         val processed = HashMap<String, MealEntity>()
 
@@ -94,10 +153,6 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                 breakfast = "", lunch = "", dinner = "", adspcfd = "", sumCal = ""
             )
 
-            // Go 코드 로직을 정확히 따름:
-            // "if row.Brst != "" { if m.Breakfast != "" { m.Breakfast += ", " }; m.Breakfast += row.Brst }"
-            // 즉, 여기서는 단순 연결만 하고, 나중에 mergeMenuItems로 정렬/중복제거
-            
             processed[dateClean] = existing.copy(
                 breakfast = appendString(existing.breakfast, row.brst),
                 lunch = appendString(existing.lunch, row.lunc),
@@ -115,20 +170,15 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
         return "$current, $new"
     }
 
-    // Go: Repository.UpsertMeals & models.Meal.Merge
     private suspend fun upsertMeals(newMeals: Map<String, MealEntity>) {
         val dates = newMeals.keys.toList()
-        
-        // DB에서 기존 데이터 조회
         val existingEntities = mealDao.getMealsByDates(dates).associateBy { it.date }
-        
         val toInsert = ArrayList<MealEntity>()
 
         for ((date, newMeal) in newMeals) {
             val existing = existingEntities[date]
             
             val merged = if (existing != null) {
-                // 기존 데이터가 있으면 병합 (Go: models.Meal.Merge)
                 MealEntity(
                     date = date,
                     breakfast = mergeMenuItems(existing.breakfast, newMeal.breakfast),
@@ -138,7 +188,6 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                     sumCal = if (newMeal.sumCal.isNotBlank()) newMeal.sumCal else existing.sumCal
                 )
             } else {
-                // 신규 데이터도 내부적으로 중복 정리 및 정렬 필요 (processRows에서 콤마로 단순 연결했으므로)
                 MealEntity(
                     date = date,
                     breakfast = mergeMenuItems("", newMeal.breakfast),
@@ -156,18 +205,11 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
         }
     }
 
-    // Go: mergeMenuItems (split -> trim -> dedup -> sort -> join)
     private fun mergeMenuItems(oldStr: String, newStr: String): String {
-        // Go 코드:
-        // if oldStr == "" { return newStr } -> 하지만 newStr이 정렬 안되어있을 수 있으므로 항상 정렬 로직 통과
-        // if newStr == "" { return oldStr }
-        
-        // 둘 다 비어있으면 빈 문자열
         if (oldStr.isBlank() && newStr.isBlank()) return ""
 
         val items = HashSet<String>()
         
-        // Old String 처리
         if (oldStr.isNotBlank()) {
             oldStr.split(",").forEach { 
                 val trimmed = it.trim()
@@ -175,7 +217,6 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
             }
         }
         
-        // New String 처리
         if (newStr.isNotBlank()) {
             newStr.split(",").forEach {
                 val trimmed = it.trim()
@@ -183,16 +224,11 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
             }
         }
 
-        // 정렬 및 조립
         return items.sorted().joinToString(", ")
     }
 
-    // Go: parseDate
     private fun parseDate(dateStr: String): String? {
-        // Go: strings.Split(dateStr, "(")[0]
         val dateRaw = dateStr.split("(")[0].trim()
-        
-        // Go formats: "2006-01-02", "2006.01.02", "20060102"
         val formats = listOf("yyyy-MM-dd", "yyyy.MM.dd", "yyyyMMdd")
         
         for (format in formats) {

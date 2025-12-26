@@ -54,6 +54,8 @@ class MainViewModel(
     fun saveApiKey(key: String) {
         viewModelScope.launch {
             preferences.saveApiKey(key)
+            // 키 변경 시 전체 리셋 (새 키로 처음부터)
+            preferences.updateSyncStatus(0, 0)
             currentApiKey = key
             loadMeal()
         }
@@ -88,13 +90,20 @@ class MainViewModel(
                 if (meal != null) {
                     _uiState.value = MealUiState.Success(meal, displayDate)
                 } else {
-                    DebugLogger.log("VM", "Syncing...")
+                    DebugLogger.log("VM", "Local miss, triggering load...")
                     try {
-                        repository.syncRecentData(key)
+                        // DB에 없으면 리셋 여부 확인
+                        // lastCheckedIndex가 0이면 reset=true
+                        val lastIdx = preferences.lastCheckedIndex.first()
+                        val reset = lastIdx == 0
+                        
+                        repository.load(key, reset)
+                        
+                        // 다시 조회
                         repository.getMeal(dateStr).onSuccess { newMeal ->
                             _uiState.value = MealUiState.Success(newMeal, displayDate)
                         }.onFailure {
-                            _uiState.value = MealUiState.Error("데이터 동기화 후 조회 실패")
+                            _uiState.value = MealUiState.Error("동기화 후에도 데이터가 없습니다.")
                         }
                     } catch (e: Exception) {
                         _uiState.value = MealUiState.Error("동기화 실패: ${e.message}")
@@ -109,6 +118,7 @@ class MainViewModel(
     fun resetApiKey() {
         viewModelScope.launch {
             preferences.saveApiKey("")
+            preferences.updateSyncStatus(0, 0)
             currentApiKey = null
             _uiState.value = MealUiState.ApiKeyMissing
         }

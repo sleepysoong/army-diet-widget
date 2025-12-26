@@ -16,21 +16,20 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
 
     override suspend fun doWork(): Result {
         val database = AppDatabase.getDatabase(applicationContext)
-        val repository = MealRepository(database.mealDao(), NetworkModule.api)
         val preferences = AppPreferences(applicationContext)
+        val repository = MealRepository(database.mealDao(), NetworkModule.api, preferences)
 
         return try {
             val apiKey = preferences.apiKey.first()
             if (apiKey.isNullOrBlank()) {
                 Log.e("SyncWorker", "API Key is missing. Skipping sync.")
-                return Result.failure() // 키가 없으면 재시도하지 않음
+                return Result.failure()
             }
 
-            repository.syncRecentData(apiKey)
+            // 백그라운드 작업은 이어서 받기 (reset=false)
+            repository.load(apiKey, reset = false)
             Result.success()
         } catch (e: HttpException) {
-            // 4xx 에러 (Client Error)는 재시도해도 소용없으므로 failure 처리 고려
-            // 하지만 일시적인 429(Too Many Requests)일 수도 있으니 신중해야 함
             Log.e("SyncWorker", "HTTP Error during sync", e)
             if (e.code() in 400..499) {
                  Result.failure()
@@ -38,7 +37,6 @@ class SyncWorker(context: Context, params: WorkerParameters) : CoroutineWorker(c
                  Result.retry()
             }
         } catch (e: IOException) {
-            // 네트워크 오류 등 일시적 오류는 재시도
             Log.e("SyncWorker", "Network Error during sync", e)
             Result.retry()
         } catch (e: Exception) {
