@@ -1,132 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@drawable/widget_background"
-    android:padding="12dp">
+    android:orientation="vertical"
+    android:padding="8dp">
 
-    <LinearLayout
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="12/26"
+        android:textColor="#212121"
+        android:textSize="10sp" />
+
+    <TextView
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:orientation="vertical">
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="조식 흰밥, 된장찌개, 김치"
+        android:textColor="#212121"
+        android:textSize="10sp" />
 
-        <!-- 헤더 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal">
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="중식 비빔밥, 미역국"
+        android:textColor="#212121"
+        android:textSize="10sp"
+        android:textStyle="bold" />
 
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="🍚 식냥"
-                android:textColor="#2E7D32"
-                android:textSize="15sp"
-                android:textStyle="bold" />
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="석식 카레라이스, 샐러드"
+        android:textColor="#212121"
+        android:textSize="10sp" />
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="12월 26일 (목)"
-                android:textColor="#757575"
-                android:textSize="11sp" />
-
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="8dp" />
-
-        <!-- 조식 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_card_bg"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-            <TextView
-                android:layout_width="56dp"
-                android:layout_height="wrap_content"
-                android:text="🌅 조식"
-                android:textColor="#212121"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="흰밥 · 된장찌개 · 계란후라이"
-                android:textColor="#212121"
-                android:textSize="11sp" />
-
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="4dp" />
-
-        <!-- 중식 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_card_active_bg"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-            <TextView
-                android:layout_width="56dp"
-                android:layout_height="wrap_content"
-                android:text="☀️ 중식"
-                android:textColor="#2E7D32"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="비빔밥 · 미역국 · 김치"
-                android:textColor="#212121"
-                android:textSize="11sp" />
-
-        </LinearLayout>
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="4dp" />
-
-        <!-- 석식 -->
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1"
-            android:background="@drawable/widget_card_bg"
-            android:orientation="horizontal"
-            android:padding="8dp">
-
-            <TextView
-                android:layout_width="56dp"
-                android:layout_height="wrap_content"
-                android:text="🌙 석식"
-                android:textColor="#212121"
-                android:textSize="12sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="카레라이스 · 단무지 · 샐러드"
-                android:textColor="#212121"
-                android:textSize="11sp" />
-
-        </LinearLayout>
-
-    </LinearLayout>
-
-</FrameLayout>
+</LinearLayout>

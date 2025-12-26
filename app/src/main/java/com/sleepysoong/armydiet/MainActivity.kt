@@ -33,7 +33,6 @@ import com.sleepysoong.armydiet.domain.MealRepository
 import com.sleepysoong.armydiet.ui.MainViewModel
 import com.sleepysoong.armydiet.ui.MainViewModelFactory
 import com.sleepysoong.armydiet.ui.MealUiState
-import com.sleepysoong.armydiet.ui.theme.ArmyDietTheme
 import com.sleepysoong.armydiet.worker.SyncWorker
 import java.util.concurrent.TimeUnit
 
@@ -49,7 +48,7 @@ class MainActivity : ComponentActivity() {
         setupWorker()
 
         setContent {
-            ArmyDietTheme {
+            MaterialTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
@@ -81,112 +80,32 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun MealScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showLogs by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            when (val state = uiState) {
-                is MealUiState.ApiKeyMissing -> {
-                    ApiKeyInputScreen(onKeyEntered = { viewModel.saveApiKey(it) })
-                }
-                is MealUiState.Loading -> {
-                    Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
-                is MealUiState.Error -> {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Text(text = state.message, color = Color.Red, textAlign = TextAlign.Center)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Button(onClick = { viewModel.loadMeal() }) {
-                            Text("다시 시도")
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        TextButton(onClick = { viewModel.resetApiKey() }) {
-                            Text("API Key 재설정")
-                        }
-                    }
-                }
-                is MealUiState.Success -> {
-                    MealContent(state, viewModel)
+    Column(
+        modifier = Modifier.fillMaxSize().padding(16.dp)
+    ) {
+        when (val state = uiState) {
+            is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(onKeyEntered = { viewModel.saveApiKey(it) })
+            is MealUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
-        }
-
-        TextButton(
-            onClick = { showLogs = true },
-            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp)
-        ) {
-            Text("LOGS")
-        }
-
-        if (showLogs) {
-            LogViewerDialog(
-                viewModel = viewModel,
-                onDismiss = { showLogs = false }
-            )
+            is MealUiState.Error -> {
+                Column(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(text = state.message, color = Color.Red)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(onClick = { viewModel.loadMeal() }) { Text("다시 시도") }
+                    TextButton(onClick = { viewModel.resetApiKey() }) { Text("API Key 재설정") }
+                }
+            }
+            is MealUiState.Success -> MealContent(state, viewModel)
         }
     }
-}
-
-@Composable
-fun LogViewerDialog(viewModel: MainViewModel, onDismiss: () -> Unit) {
-    val logs by viewModel.debugLogs.collectAsStateWithLifecycle()
-    val context = androidx.compose.ui.platform.LocalContext.current
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Debug Logs") },
-        text = {
-            Column {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .background(Color(0xFFEEEEEE))
-                        .padding(4.dp)
-                ) {
-                    items(logs) { log ->
-                        Text(
-                            text = log,
-                            fontSize = 10.sp,
-                            fontFamily = FontFamily.Monospace,
-                            modifier = Modifier.padding(vertical = 2.dp)
-                        )
-                        Divider(color = Color.LightGray)
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            TextButton(onClick = onDismiss) {
-                Text("닫기")
-            }
-        },
-        dismissButton = {
-            Row {
-                TextButton(onClick = { viewModel.clearLogs() }) {
-                    Text("초기화")
-                }
-                TextButton(onClick = {
-                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                    val clip = android.content.ClipData.newPlainText("Debug Logs", logs.joinToString("\n"))
-                    clipboard.setPrimaryClip(clip)
-                    android.widget.Toast.makeText(context, "로그가 복사되었습니다.", android.widget.Toast.LENGTH_SHORT).show()
-                }) {
-                    Text("복사")
-                }
-            }
-        }
-    )
 }
 
 @Composable
@@ -194,24 +113,11 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
     var apiKey by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 48.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "🔑 API Key 입력",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
+    Column(modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
+        Text(text = "API Key 입력", fontSize = 20.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = "국방부 공공데이터 포털에서 발급받은 API Key를 입력하세요.", color = Color.Gray, fontSize = 14.sp)
         Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "국방부 공공데이터 포털에서 발급받은\nAPI Key를 입력해주세요.",
-            textAlign = TextAlign.Center,
-            color = Color.Gray
-        )
-        Spacer(modifier = Modifier.height(32.dp))
         OutlinedTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
@@ -226,7 +132,7 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
                 }
             })
         )
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(16.dp))
         Button(
             onClick = {
                 if (apiKey.isNotBlank()) {
@@ -237,86 +143,45 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
             modifier = Modifier.fillMaxWidth(),
             enabled = apiKey.isNotBlank()
         ) {
-            Text("저장하고 시작하기")
+            Text("저장")
         }
     }
 }
 
 @Composable
 fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(
-            text = "오늘 먹을 짬",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        Text(
-            text = state.targetDate,
-            fontSize = 18.sp,
-            color = Color.Gray,
-            modifier = Modifier.padding(bottom = 24.dp)
-        )
+    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+        Text(text = state.targetDate, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Spacer(modifier = Modifier.height(16.dp))
 
         if (state.meal == null) {
-            Text("해당 날짜의 식단 정보가 없어요 ㅠㅠ", textAlign = TextAlign.Center)
+            Text("식단 정보 없음")
         } else {
-            MealCard("조식 🌅", state.meal.breakfast)
-            Spacer(modifier = Modifier.height(16.dp))
-            MealCard("중식 ☀️", state.meal.lunch)
-            Spacer(modifier = Modifier.height(16.dp))
-            MealCard("석식 🌙", state.meal.dinner)
-            
-            // 부식 및 칼로리 정보 (있을 경우에만)
+            MealSection("조식", state.meal.breakfast)
+            MealSection("중식", state.meal.lunch)
+            MealSection("석식", state.meal.dinner)
             if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
-                Spacer(modifier = Modifier.height(16.dp))
-                MealCard("부식 🥛", state.meal.adspcfd)
+                MealSection("부식", state.meal.adspcfd)
             }
             if (state.meal.sumCal.isNotBlank()) {
-                Spacer(modifier = Modifier.height(16.dp))
-                Text("총 칼로리: ${state.meal.sumCal} kcal", color = Color.Gray)
+                Spacer(modifier = Modifier.height(8.dp))
+                Text("${state.meal.sumCal} kcal", color = Color.Gray, fontSize = 12.sp)
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         Row {
-            Button(onClick = { viewModel.loadMeal() }) {
-                Text("새로고침")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            OutlinedButton(onClick = { viewModel.resetApiKey() }) {
-                Text("키 재설정")
-            }
+            Button(onClick = { viewModel.loadMeal() }) { Text("새로고침") }
+            Spacer(modifier = Modifier.width(8.dp))
+            OutlinedButton(onClick = { viewModel.resetApiKey() }) { Text("키 재설정") }
         }
-        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
 @Composable
-fun MealCard(title: String, content: String) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = title,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Divider(modifier = Modifier.padding(vertical = 8.dp))
-            Text(
-                text = content,
-                fontSize = 16.sp,
-                lineHeight = 24.sp
-            )
-        }
+fun MealSection(title: String, content: String) {
+    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
+        Text(text = title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+        Text(text = content, fontSize = 14.sp, lineHeight = 20.sp)
     }
 }
