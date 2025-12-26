@@ -19,6 +19,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
 import com.sleepysoong.armydiet.data.local.AppDatabase
@@ -65,9 +66,10 @@ class MainActivity : ComponentActivity() {
             .setConstraints(constraints)
             .build()
 
+        // 정책을 UPDATE로 변경하여 제약조건 등이 변경되면 작업을 갱신하도록 함
         WorkManager.getInstance(this).enqueueUniquePeriodicWork(
             "daily_meal_sync",
-            ExistingPeriodicWorkPolicy.KEEP,
+            ExistingPeriodicWorkPolicy.UPDATE,
             syncRequest
         )
     }
@@ -75,7 +77,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MealScreen(viewModel: MainViewModel) {
-    val uiState by viewModel.uiState.collectAsState()
+    // Lifecycle-aware collection
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = Modifier

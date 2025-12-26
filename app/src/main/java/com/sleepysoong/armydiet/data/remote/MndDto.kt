@@ -4,7 +4,16 @@ import com.google.gson.annotations.SerializedName
 
 data class MndResponse(
     @SerializedName("DS_TB_MNDT_DATEBYMLSVC_7369")
-    val service: MndService?
+    val service: MndService?,
+    @SerializedName("RESULT")
+    val result: MndResult?
+)
+
+data class MndResult(
+    @SerializedName("CODE")
+    val code: String?,
+    @SerializedName("MESSAGE")
+    val message: String?
 )
 
 data class MndService(

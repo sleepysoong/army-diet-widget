@@ -9,15 +9,9 @@ import kotlinx.coroutines.withContext
 
 class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
 
-    private val allergyRegex = Regex("\\(\\d+\\)")
+    // (1), (1.2), (1.2.3) 등 숫자와 점으로 구성된 알레르기 정보 제거
+    private val allergyRegex = Regex("\\([0-9.]+\\)")
     private val dateParseRegex = Regex("\\(.*?\\)")
-
-    // API Key가 필요하면 syncRecentData를 호출해야 하므로, 여기서 처리하기보다
-    // ViewModel이나 Worker에서 키를 넘겨받는 구조가 좋습니다.
-    // 하지만 getMeal에서 자동 동기화를 하려면 키가 필요합니다.
-    // 구조상 getMeal 호출 시 키를 넘겨주거나, 동기화를 분리해야 합니다.
-    // 여기서는 getMeal에서 동기화 로직을 분리하고, 명시적으로 sync를 호출하도록 변경하거나
-    // 키를 인자로 받겠습니다.
 
     suspend fun getMeal(date: String): Result<MealEntity?> {
         return withContext(Dispatchers.IO) {
@@ -47,12 +41,13 @@ class MealRepository(private val mealDao: MealDao, private val api: MndApi) {
                 val response = api.getMeals(apiKey, start, end)
                 
                 response.service?.rows?.let { rows ->
-                    val entities = rows.mapNotNull { row ->
-                        processRow(row)
+                    val entities = rows.mapNotNull {
+                        processRow(it)
                     }
                     
-                    entities.forEach { entity ->
-                        mealDao.insertMeal(entity)
+                    // 3. DB 저장 (Bulk Insert)
+                    if (entities.isNotEmpty()) {
+                        mealDao.insertMeals(entities)
                     }
                 }
             } catch (e: Exception) {
