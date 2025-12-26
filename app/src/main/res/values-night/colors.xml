@@ -1,10 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 다크 테마 위젯 배경 -->
-    <color name="widget_background">#1E1E1E</color>
-    <color name="widget_card">#2D2D2D</color>
-    <color name="widget_card_active">#1B3320</color>
-    <color name="widget_primary">#81C784</color>
-    <color name="widget_text">#E0E0E0</color>
-    <color name="widget_text_secondary">#9E9E9E</color>
+    <!-- Dark Green Theme - Dark Mode -->
+    <color name="primary">#81C784</color>
+    <color name="primary_light">#A5D6A7</color>
+    <color name="primary_dark">#1B5E20</color>
+    
+    <color name="widget_background">#121212</color>
+    <color name="widget_surface">#1E1E1E</color>
+    <color name="widget_surface_variant">#2D2D2D</color>
+    <color name="widget_text">#E6E1E5</color>
+    <color name="widget_text_secondary">#BDBDBD</color>
 </resources>
