@@ -12,6 +12,8 @@ import androidx.glance.*
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.*
+import androidx.glance.appwidget.lazy.LazyRow
+import androidx.glance.appwidget.lazy.items
 import androidx.glance.layout.*
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
@@ -160,10 +162,8 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
 @Composable
 private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val content = getMealContent(data.meal, data.currentMeal)
+    val menus = content.split(Regex("[\\s,]+")).filter { it.isNotBlank() }
     val fontSize = 16.sp * data.fontScale
-    
-    // 키워드 포함 여부 확인
-    val isDelicious = data.keywords.any { content.contains(it) }
     
     Column(
         horizontalAlignment = Alignment.Start,
@@ -173,31 +173,17 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
             label = data.currentMeal.label, 
             activeColor = themeColor, 
             fontSize = fontSize,
-            isCurrent = true,
-            isDelicious = isDelicious
+            isCurrent = true
         )
-        Spacer(modifier = GlanceModifier.height(2.dp))
+        Spacer(modifier = GlanceModifier.height(4.dp))
         
-        Box(
-            modifier = if (isDelicious) {
-                GlanceModifier
-                    .background(ColorProvider(Color(0xFF1B5E20)))
-                    .cornerRadius(8.dp)
-                    .padding(horizontal = 6.dp, vertical = 2.dp)
-            } else {
-                GlanceModifier
+        // Menu List (Horizontal Scroll)
+        LazyRow(modifier = GlanceModifier.fillMaxWidth()) {
+            items(menus) { menu ->
+                val isDelicious = data.keywords.any { menu.contains(it) }
+                MenuChip(menu, isDelicious, fontSize)
+                Spacer(modifier = GlanceModifier.width(4.dp))
             }
-        ) {
-            Text(
-                text = content,
-                style = TextStyle(
-                    color = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground,
-                    fontSize = fontSize,
-                    fontWeight = if (isDelicious) FontWeight.Bold else FontWeight.Medium,
-                    textAlign = TextAlign.Start
-                ),
-                maxLines = 2
-            )
         }
     }
 }
@@ -212,10 +198,8 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
     ) {
         MealType.entries.forEach { type ->
             val content = getMealContent(data.meal, type)
+            val menus = content.split(Regex("[\\s,]+")).filter { it.isNotBlank() }
             val isCurrent = type == data.currentMeal
-            
-            // 키워드 포함 여부 확인
-            val isDelicious = data.keywords.any { content.contains(it) }
             
             Column(
                 modifier = GlanceModifier
@@ -227,32 +211,17 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                     label = type.label,
                     activeColor = themeColor,
                     fontSize = fontSize,
-                    isCurrent = isCurrent,
-                    isDelicious = isDelicious
+                    isCurrent = isCurrent
                 )
                 
-                Spacer(modifier = GlanceModifier.height(2.dp))
+                Spacer(modifier = GlanceModifier.height(4.dp))
                 
-                Box(
-                    modifier = if (isDelicious) {
-                        GlanceModifier
-                            .background(ColorProvider(Color(0xFF1B5E20)))
-                            .cornerRadius(8.dp)
-                            .padding(horizontal = 6.dp, vertical = 2.dp)
-                    } else {
-                        GlanceModifier
+                LazyRow(modifier = GlanceModifier.fillMaxWidth()) {
+                    items(menus) { menu ->
+                        val isDelicious = data.keywords.any { menu.contains(it) }
+                        MenuChip(menu, isDelicious, fontSize)
+                        Spacer(modifier = GlanceModifier.width(4.dp))
                     }
-                ) {
-                    Text(
-                        text = content,
-                        style = TextStyle(
-                            color = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground,
-                            fontSize = fontSize,
-                            fontWeight = if (isCurrent || isDelicious) FontWeight.Bold else FontWeight.Normal,
-                            textAlign = TextAlign.Start
-                        ),
-                        maxLines = if (isLarge) 3 else 2
-                    )
                 }
             }
         }
@@ -264,29 +233,48 @@ private fun MealTag(
     label: String, 
     activeColor: ColorProvider, 
     fontSize: TextUnit, 
-    isCurrent: Boolean,
-    isDelicious: Boolean = false
+    isCurrent: Boolean
 ) {
-    // 활성화: 다크그린 배경 / 흰색 글씨
-    // 비활성화: 회색 배경 / 진한 회색 글씨
     val backgroundColor = if (isCurrent) activeColor else ColorProvider(Color(0xFFE0E0E0))
     val textColor = if (isCurrent) ColorProvider(Color.White) else ColorProvider(Color(0xFF424242))
     
-    val displayText = if (isDelicious) "$label ★" else label
-
     Box(
         modifier = GlanceModifier
             .background(backgroundColor)
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .cornerRadius(16.dp), // 완전 둥근 모서리
+            .cornerRadius(16.dp),
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = displayText,
+            text = label,
             style = TextStyle(
                 color = textColor,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Bold
+            )
+        )
+    }
+}
+
+@Composable
+private fun MenuChip(text: String, isDelicious: Boolean, fontSize: TextUnit) {
+    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else ColorProvider(Color.Transparent)
+    val textColor = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground
+    val fontWeight = if (isDelicious) FontWeight.Bold else FontWeight.Normal
+
+    Box(
+        modifier = GlanceModifier
+            .background(backgroundColor)
+            .cornerRadius(8.dp)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = text,
+            style = TextStyle(
+                color = textColor,
+                fontSize = fontSize,
+                fontWeight = fontWeight
             )
         )
     }
