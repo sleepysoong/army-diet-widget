@@ -60,7 +60,7 @@ class MealWidget : GlanceAppWidget() {
         
         WidgetData(
             meal = meal,
-            displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M/d")),
+            displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M월 d일")),
             currentMeal = getCurrentMealType(),
             fontScale = config.fontScale.first(),
             showCalories = config.showCalories.first()
@@ -117,11 +117,13 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
+            val headerFontSize = (if (isSmall) 24 else 28).sp * data.fontScale
+            
             Text(
                 text = data.displayDate,
                 style = TextStyle(
                     color = darkGreen,
-                    fontSize = (if (isSmall) 24 else 28).sp * data.fontScale, // 기존 대비 2배 확대
+                    fontSize = headerFontSize,
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -132,7 +134,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                         text = " ($cal)",
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = (if (isSmall) 14 else 16).sp * data.fontScale
+                            fontSize = headerFontSize // 날짜와 동일한 크기
                         )
                     )
                 }
@@ -158,7 +160,12 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         horizontalAlignment = Alignment.Start, // 왼쪽 정렬
         modifier = GlanceModifier.fillMaxWidth()
     ) {
-        MealTag(data.currentMeal.label, themeColor, data.fontScale)
+        MealTag(
+            label = data.currentMeal.label, 
+            activeColor = themeColor, 
+            fontSize = fontSize, // 메뉴와 동일한 크기
+            isCurrent = true
+        )
         Spacer(modifier = GlanceModifier.height(4.dp))
         Text(
             text = content,
@@ -193,8 +200,8 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             ) {
                 MealTag(
                     label = type.label,
-                    color = if (isCurrent) themeColor else ColorProvider(Color(0xFF666666)),
-                    fontScale = data.fontScale,
+                    activeColor = themeColor,
+                    fontSize = fontSize, // 메뉴와 동일한 크기
                     isCurrent = isCurrent
                 )
                 
@@ -216,10 +223,20 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
 }
 
 @Composable
-private fun MealTag(label: String, color: ColorProvider, fontScale: Float, isCurrent: Boolean = true) {
+private fun MealTag(
+    label: String, 
+    activeColor: ColorProvider, 
+    fontSize: TextUnit, 
+    isCurrent: Boolean
+) {
+    // 활성화: 다크그린 배경 / 흰색 글씨
+    // 비활성화: 회색 배경 / 진한 회색 글씨
+    val backgroundColor = if (isCurrent) activeColor else ColorProvider(Color(0xFFE0E0E0))
+    val textColor = if (isCurrent) ColorProvider(Color.White) else ColorProvider(Color(0xFF424242))
+
     Box(
         modifier = GlanceModifier
-            .background(if (isCurrent) color else ColorProvider(Color.Transparent))
+            .background(backgroundColor)
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .cornerRadius(16.dp), // 완전 둥근 모서리
         contentAlignment = Alignment.Center
@@ -227,8 +244,8 @@ private fun MealTag(label: String, color: ColorProvider, fontScale: Float, isCur
         Text(
             text = label,
             style = TextStyle(
-                color = if (isCurrent) ColorProvider(Color.White) else color,
-                fontSize = 12.sp * fontScale,
+                color = textColor,
+                fontSize = fontSize,
                 fontWeight = FontWeight.Bold
             )
         )
