@@ -33,7 +33,10 @@ fun HighlightedText(
     }
 
     val annotatedString = buildAnnotatedString {
-        val tokens = text.split(" ")
+        // Split by space but preserve delimiters if possible? 
+        // Let's just split by whitespace and rejoin with space. 
+        // Most military meal data uses spaces or newlines as separators.
+        val tokens = text.split(Regex("\\s+"))
         tokens.forEachIndexed { index, token ->
             val hasKeyword = keywords.any { token.contains(it) }
             

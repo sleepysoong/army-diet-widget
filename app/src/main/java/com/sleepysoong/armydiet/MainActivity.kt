@@ -1,9 +1,5 @@
 package com.sleepysoong.armydiet
 
-import android.content.Intent
-import android.os.Bundle
-import androidx.activity.ComponentActivity
-import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -16,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.SpanStyle
@@ -188,12 +185,15 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
 
 @Composable
 fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<String>) {
+    val configuration = LocalConfiguration.current
+    val isWideScreen = configuration.screenWidthDp.dp > 600.dp
+    
     Box(modifier = Modifier.fillMaxSize()) {
         when (uiState) {
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
             is MealUiState.Loading -> LoadingState()
             is MealUiState.Error -> ErrorState(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
-            is MealUiState.Success -> MealContent(uiState, viewModel, keywords)
+            is MealUiState.Success -> MealContent(uiState, viewModel, keywords, isWideScreen)
         }
     }
 }
@@ -202,7 +202,7 @@ fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<St
 fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
     // Basic implementation, consider refactoring to separate file if complex
     var apiKey by remember { mutableStateOf("") }
-    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
+    val focusManager = LocalFocusManager.current
 
     Column(
         modifier = Modifier
@@ -251,8 +251,14 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: Set<String>) {
+fun MealContent(
+    state: MealUiState.Success, 
+    viewModel: MainViewModel, 
+    keywords: Set<String>,
+    isWideScreen: Boolean
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -275,17 +281,38 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: 
             )
         }
         
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
 
         if (state.meal == null) {
             EmptyState(message = "오늘의 식단 정보가 없습니다.")
         } else {
-            MealCard("아침", state.meal.breakfast, keywords)
-            MealCard("점심", state.meal.lunch, keywords)
-            MealCard("저녁", state.meal.dinner, keywords)
-            
-            if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
-                MealCard("부식", state.meal.adspcfd, keywords)
+            val meals = listOfNotNull(
+                "아침" to state.meal.breakfast,
+                "중식" to state.meal.lunch,
+                "석식" to state.meal.dinner,
+                if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") 
+                    "부식" to state.meal.adspcfd else null
+            )
+
+            if (isWideScreen) {
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    maxItemsInEachRow = 2
+                ) {
+                    meals.forEach { (title, content) ->
+                        MealCard(
+                            title = title,
+                            content = content,
+                            keywords = keywords,
+                            modifier = Modifier.fillMaxWidth(0.48f)
+                        )
+                    }
+                }
+            } else {
+                meals.forEach { (title, content) ->
+                    MealCard(title, content, keywords)
+                }
             }
         }
 
@@ -299,6 +326,13 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: 
         }
         Spacer(modifier = Modifier.height(32.dp))
     }
+}
+
+private fun formatCalories(sumCal: String?): String? {
+    if (sumCal.isNullOrBlank()) return null
+    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
+    val value = cleaned.toDoubleOrNull() ?: return null
+    return "${value.toInt()} kcal"
 }
 
 private fun formatCalories(sumCal: String?): String? {

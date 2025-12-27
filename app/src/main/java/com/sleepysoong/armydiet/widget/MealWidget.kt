@@ -177,16 +177,28 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
             isDelicious = isDelicious
         )
         Spacer(modifier = GlanceModifier.height(2.dp))
-        Text(
-            text = content,
-            style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
-                fontSize = fontSize,
-                fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Start
-            ),
-            maxLines = 2
-        )
+        
+        Box(
+            modifier = if (isDelicious) {
+                GlanceModifier
+                    .background(ColorProvider(Color(0xFF1B5E20)))
+                    .cornerRadius(8.dp)
+                    .padding(horizontal = 6.dp, vertical = 2.dp)
+            } else {
+                GlanceModifier
+            }
+        ) {
+            Text(
+                text = content,
+                style = TextStyle(
+                    color = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground,
+                    fontSize = fontSize,
+                    fontWeight = if (isDelicious) FontWeight.Bold else FontWeight.Medium,
+                    textAlign = TextAlign.Start
+                ),
+                maxLines = 2
+            )
+        }
     }
 }
 
@@ -221,16 +233,27 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 
                 Spacer(modifier = GlanceModifier.height(2.dp))
                 
-                Text(
-                    text = content,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
-                        fontSize = fontSize,
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Start
-                    ),
-                    maxLines = if (isLarge) 3 else 2
-                )
+                Box(
+                    modifier = if (isDelicious) {
+                        GlanceModifier
+                            .background(ColorProvider(Color(0xFF1B5E20)))
+                            .cornerRadius(8.dp)
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    } else {
+                        GlanceModifier
+                    }
+                ) {
+                    Text(
+                        text = content,
+                        style = TextStyle(
+                            color = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground,
+                            fontSize = fontSize,
+                            fontWeight = if (isCurrent || isDelicious) FontWeight.Bold else FontWeight.Normal,
+                            textAlign = TextAlign.Start
+                        ),
+                        maxLines = if (isLarge) 3 else 2
+                    )
+                }
             }
         }
     }

@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepysoong.armydiet.di.AppContainer
 import com.sleepysoong.armydiet.ui.theme.AppTheme
 import com.sleepysoong.armydiet.ui.theme.ArmyColors
+import com.sleepysoong.armydiet.widget.MealWidgetReceiver
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
@@ -50,6 +51,7 @@ fun SettingsScreen(
 ) {
     val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
 
     Scaffold(
         topBar = {
@@ -100,7 +102,10 @@ fun SettingsScreen(
             
             KeywordInput(
                 onAdd = { keyword ->
-                    scope.launch { container.preferences.addKeyword(keyword) }
+                    scope.launch { 
+                        container.preferences.addKeyword(keyword) 
+                        MealWidgetReceiver.updateAllWidgets(context)
+                    }
                 }
             )
             
@@ -109,7 +114,10 @@ fun SettingsScreen(
             KeywordList(
                 keywords = keywords,
                 onRemove = { keyword ->
-                    scope.launch { container.preferences.removeKeyword(keyword) }
+                    scope.launch { 
+                        container.preferences.removeKeyword(keyword) 
+                        MealWidgetReceiver.updateAllWidgets(context)
+                    }
                 }
             )
             
@@ -119,8 +127,8 @@ fun SettingsScreen(
                 onReset = {
                     scope.launch {
                         container.preferences.saveApiKey("")
-                        // Optionally finish activity or show toast, but observing API key in Main will trigger UI change
-                        onBack() // Close settings to go back to main (which will show API input screen)
+                        MealWidgetReceiver.updateAllWidgets(context)
+                        onBack() 
                     }
                 }
             )
@@ -133,34 +141,46 @@ fun ResetApiKeySection(onReset: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = ArmyColors.Error.copy(alpha = 0.05f)
+            containerColor = ArmyColors.Error.copy(alpha = 0.1f)
         ),
-        border = androidx.compose.foundation.BorderStroke(1.dp, ArmyColors.Error.copy(alpha = 0.3f))
+        border = androidx.compose.foundation.BorderStroke(2.dp, ArmyColors.Error.copy(alpha = 0.5f)),
+        shape = MaterialTheme.shapes.medium
     ) {
         Column(
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier.padding(20.dp)
         ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = null,
+                    tint = ArmyColors.Error,
+                    modifier = Modifier.size(20.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "데이터 초기화",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = ArmyColors.Error
+                )
+            }
+            Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "API Key 초기화",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.Bold,
-                color = ArmyColors.Error
+                text = "저장된 API Key를 삭제하고 초기 화면으로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = ArmyColors.Error.copy(alpha = 0.9f)
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "저장된 API Key를 삭제하고 다시 입력합니다.",
-                style = MaterialTheme.typography.bodySmall,
-                color = ArmyColors.Error.copy(alpha = 0.8f)
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
             Button(
                 onClick = onReset,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = ArmyColors.Error
-                )
+                    containerColor = ArmyColors.Error,
+                    contentColor = androidx.compose.ui.graphics.Color.White
+                ),
+                shape = MaterialTheme.shapes.medium
             ) {
-                Text("초기화", color = androidx.compose.ui.graphics.Color.White)
+                Text("API Key 초기화", fontWeight = FontWeight.Bold)
             }
         }
     }
