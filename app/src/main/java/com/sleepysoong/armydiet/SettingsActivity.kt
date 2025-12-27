@@ -157,7 +157,7 @@ fun KeywordInput(onAdd: (String) -> Unit) {
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun KeywordList(
     keywords: Set<String>,

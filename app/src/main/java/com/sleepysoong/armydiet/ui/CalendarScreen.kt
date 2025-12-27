@@ -52,41 +52,6 @@ fun CalendarScreen(
     // Responsive logic (Foldable/Tablet)
     val isWideScreen = screenWidth > 600.dp
     
-    // Shared Calendar Grid Component
-    val calendarGrid = @Composable { weight: Float ->
-        Column(
-            modifier = Modifier
-                .weight(weight)
-                .fillMaxHeight()
-        ) {
-            CalendarHeader(
-                currentMonth = currentMonth,
-                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
-                onNextMonth = { currentMonth = currentMonth.plusMonths(1) }
-            )
-            WeekDayHeader()
-            CalendarGrid(
-                currentMonth = currentMonth,
-                selectedDate = selectedDate,
-                mealData = mealData,
-                onDateSelected = onDateSelected,
-                modifier = Modifier.weight(1f)
-            )
-        }
-    }
-
-    // Shared Meal Detail Component
-    val mealDetail = @Composable { weight: Float ->
-        MealDetailView(
-            date = selectedDate,
-            meal = selectedMeal,
-            keywords = keywords,
-            modifier = Modifier
-                .weight(weight)
-                .fillMaxHeight()
-        )
-    }
-
     if (isWideScreen) {
         Row(
             modifier = modifier
@@ -94,16 +59,84 @@ fun CalendarScreen(
                 .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            calendarGrid(1f)
-            mealDetail(1f)
+            CalendarSection(
+                currentMonth = currentMonth,
+                selectedDate = selectedDate,
+                mealData = mealData,
+                onDateSelected = onDateSelected,
+                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
+            MealDetailSection(
+                selectedDate = selectedDate,
+                selectedMeal = selectedMeal,
+                keywords = keywords,
+                modifier = Modifier.weight(1f).fillMaxHeight()
+            )
         }
     } else {
         Column(modifier = modifier.fillMaxSize()) {
-            calendarGrid(0.45f) // Calendar takes top 45%
+            CalendarSection(
+                currentMonth = currentMonth,
+                selectedDate = selectedDate,
+                mealData = mealData,
+                onDateSelected = onDateSelected,
+                onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
+                onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
+                modifier = Modifier.weight(0.45f).fillMaxHeight()
+            )
             Spacer(modifier = Modifier.height(16.dp))
-            mealDetail(0.55f)   // Detail takes bottom 55%
+            MealDetailSection(
+                selectedDate = selectedDate,
+                selectedMeal = selectedMeal,
+                keywords = keywords,
+                modifier = Modifier.weight(0.55f).fillMaxHeight()
+            )
         }
     }
+}
+
+@Composable
+private fun CalendarSection(
+    currentMonth: YearMonth,
+    selectedDate: LocalDate,
+    mealData: Map<String, MealEntity>,
+    onDateSelected: (LocalDate) -> Unit,
+    onPreviousMonth: () -> Unit,
+    onNextMonth: () -> Unit,
+    modifier: Modifier
+) {
+    Column(modifier = modifier) {
+        CalendarHeader(
+            currentMonth = currentMonth,
+            onPreviousMonth = onPreviousMonth,
+            onNextMonth = onNextMonth
+        )
+        WeekDayHeader()
+        CalendarGrid(
+            currentMonth = currentMonth,
+            selectedDate = selectedDate,
+            mealData = mealData,
+            onDateSelected = onDateSelected,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun MealDetailSection(
+    selectedDate: LocalDate,
+    selectedMeal: MealEntity?,
+    keywords: Set<String>,
+    modifier: Modifier
+) {
+    MealDetailView(
+        date = selectedDate,
+        meal = selectedMeal,
+        keywords = keywords,
+        modifier = modifier
+    )
 }
 
 @Composable

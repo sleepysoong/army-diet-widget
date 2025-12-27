@@ -13,9 +13,12 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -104,8 +107,8 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     
     // 식단 데이터 로드
     LaunchedEffect(Unit) {
-        container.mealDao.getAllMealsFlow().collect {
-            allMeals = meals.associateBy { it.date }
+        container.mealDao.getAllMealsFlow().collect { mealList ->
+            allMeals = mealList.associateBy { it.date }
         }
     }
     
