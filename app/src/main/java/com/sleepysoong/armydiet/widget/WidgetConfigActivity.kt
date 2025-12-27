@@ -71,13 +71,11 @@ fun WidgetConfigScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     
     var fontScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_FONT_SCALE) }
-    var letterSpacing by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_LETTER_SPACING) }
     var showCalories by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
         fontScale = config.fontScale.first()
-        letterSpacing = config.letterSpacing.first()
         showCalories = config.showCalories.first()
     }
     
@@ -102,17 +100,6 @@ fun WidgetConfigScreen(
             valueRange = WidgetConfig.MIN_FONT_SCALE..WidgetConfig.MAX_FONT_SCALE,
             valueLabel = "${(fontScale * 100).toInt()}%",
             onValueChange = { fontScale = it }
-        )
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
-        // 자간
-        ConfigSlider(
-            title = "자간",
-            value = letterSpacing,
-            valueRange = WidgetConfig.MIN_LETTER_SPACING..WidgetConfig.MAX_LETTER_SPACING,
-            valueLabel = "${(letterSpacing * 100).toInt()}%",
-            onValueChange = { letterSpacing = it }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -142,20 +129,13 @@ fun WidgetConfigScreen(
                     isSaving = true
                     scope.launch {
                         config.setFontScale(fontScale)
-                        config.setLetterSpacing(letterSpacing)
                         config.setShowCalories(showCalories)
                         
+                        // DataStore 저장이 완료될 때까지 잠시 대기
                         delay(100)
                         
-                        try {
-                            val manager = GlanceAppWidgetManager(context)
-                            val glanceIds = manager.getGlanceIds(MealWidget::class.java)
-                            glanceIds.forEach { glanceId ->
-                                MealWidget().update(context, glanceId)
-                            }
-                        } catch (e: Exception) {
-                            MealWidgetReceiver.updateAllWidgets(context)
-                        }
+                        // 위젯 업데이트 요청
+                        MealWidgetReceiver.updateAllWidgets(context)
                         
                         delay(200)
                         onSaveComplete()

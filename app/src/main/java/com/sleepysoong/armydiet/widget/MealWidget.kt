@@ -61,7 +61,6 @@ class MealWidget : GlanceAppWidget() {
             displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M/d")),
             currentMeal = getCurrentMealType(),
             fontScale = config.fontScale.first(),
-            letterSpacing = config.letterSpacing.first(),
             showCalories = config.showCalories.first()
         )
     }
@@ -84,7 +83,6 @@ private data class WidgetData(
     val displayDate: String,
     val currentMeal: MealType,
     val fontScale: Float,
-    val letterSpacing: Float,
     val showCalories: Boolean
 )
 
