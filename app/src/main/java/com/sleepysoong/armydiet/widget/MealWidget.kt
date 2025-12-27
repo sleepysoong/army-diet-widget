@@ -95,13 +95,6 @@ enum class MealType(val label: String) {
     DINNER("저녁")
 }
 
-private val pretendard = FontFamily(
-    Font(R.font.pretendard_bold, FontWeight.Bold),
-    Font(R.font.pretendard_semibold, FontWeight.SemiBold),
-    Font(R.font.pretendard_medium, FontWeight.Medium),
-    Font(R.font.pretendard_regular, FontWeight.Normal)
-)
-
 @Composable
 private fun WidgetContent(data: WidgetData, size: DpSize) {
     val isSmall = size.width < 200.dp || size.height < 120.dp
@@ -130,7 +123,6 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             Text(
                 text = data.displayDate,
                 style = TextStyle(
-                    fontFamily = pretendard,
                     color = darkGreen,
                     fontSize = headerFontSize,
                     fontWeight = FontWeight.Bold
@@ -142,7 +134,6 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                     Text(
                         text = " ($cal)",
                         style = TextStyle(
-                            fontFamily = pretendard,
                             color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = headerFontSize // 날짜와 동일한 크기
                         )
@@ -183,7 +174,6 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         Text(
             text = content,
             style = TextStyle(
-                fontFamily = pretendard,
                 color = GlanceTheme.colors.onBackground,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Medium,
@@ -224,7 +214,6 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 Text(
                     text = content,
                     style = TextStyle(
-                        fontFamily = pretendard,
                         color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
@@ -259,7 +248,6 @@ private fun MealTag(
         Text(
             text = label,
             style = TextStyle(
-                fontFamily = pretendard,
                 color = textColor,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Bold
