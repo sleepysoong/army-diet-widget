@@ -2,6 +2,7 @@ package com.sleepysoong.armydiet.widget
 
 import android.content.Context
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -13,6 +14,7 @@ import androidx.glance.action.clickable
 import androidx.glance.appwidget.*
 import androidx.glance.layout.*
 import androidx.glance.text.*
+import androidx.glance.unit.ColorProvider
 import com.sleepysoong.armydiet.MainActivity
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
@@ -98,7 +100,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
     val isLarge = size.width >= 280.dp && size.height >= 180.dp
     
     // 다크 그린 색상 정의
-    val darkGreen = ColorProvider(android.graphics.Color.parseColor("#1B5E20"))
+    val darkGreen = ColorProvider(Color(0xFF1B5E20))
     
     Column(
         modifier = GlanceModifier
@@ -190,7 +192,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             ) {
                 MealTag(
                     label = type.label,
-                    color = if (isCurrent) themeColor else ColorProvider(android.graphics.Color.parseColor("#666666")),
+                    color = if (isCurrent) themeColor else ColorProvider(Color(0xFF666666)),
                     fontScale = data.fontScale,
                     isCurrent = isCurrent
                 )
@@ -216,7 +218,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
 private fun MealTag(label: String, color: ColorProvider, fontScale: Float, isCurrent: Boolean = true) {
     Box(
         modifier = GlanceModifier
-            .background(if (isCurrent) color else ColorProvider(android.graphics.Color.TRANSPARENT))
+            .background(if (isCurrent) color else ColorProvider(Color.Transparent))
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .cornerRadius(16.dp), // 완전 둥근 모서리
         contentAlignment = Alignment.Center
@@ -224,7 +226,7 @@ private fun MealTag(label: String, color: ColorProvider, fontScale: Float, isCur
         Text(
             text = label,
             style = TextStyle(
-                color = if (isCurrent) ColorProvider(android.graphics.Color.WHITE) else color,
+                color = if (isCurrent) ColorProvider(Color.White) else color,
                 fontSize = 12.sp * fontScale,
                 fontWeight = FontWeight.Bold
             )
