@@ -64,6 +64,8 @@ class MealWidget : GlanceAppWidget() {
             displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M월 d일")),
             currentMeal = getCurrentMealType(),
             fontScale = config.fontScale.first(),
+            tagScale = config.tagScale.first(),
+            headerScale = config.headerScale.first(),
             showCalories = config.showCalories.first(),
             keywords = container.preferences.highlightKeywords.first()
         )
@@ -87,6 +89,8 @@ private data class WidgetData(
     val displayDate: String,
     val currentMeal: MealType,
     val fontScale: Float,
+    val tagScale: Float,
+    val headerScale: Float,
     val showCalories: Boolean,
     val keywords: Set<String>
 )
@@ -104,8 +108,8 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
     
     // 폰트 크기 계산 (메뉴 크기 기준)
     val menuFontSize = (if (isSmall) 14 else if (isLarge) 18 else 16).sp * data.fontScale
-    val tagFontSize = (menuFontSize.value * 1.5f).sp
-    val headerFontSize = (menuFontSize.value * 2.5f).sp
+    val tagFontSize = (menuFontSize.value * data.tagScale).sp
+    val headerFontSize = (menuFontSize.value * data.headerScale).sp
     
     // 다크 그린 색상 정의
     val darkGreen = ColorProvider(Color(0xFF1B5E20))
@@ -271,9 +275,9 @@ private fun MealTag(
 
 @Composable
 private fun MenuChip(text: String, isDelicious: Boolean, fontSize: TextUnit) {
-    // 하이라이트 스타일: 배경 연두색, 글자 다크그린, 볼드 제외
-    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFFC5E1A5)) else ColorProvider(Color.Transparent)
-    val textColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
+    // 하이라이트 스타일: 배경 다크그린, 글자 화이트, 볼드 제외
+    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else ColorProvider(Color.Transparent)
+    val textColor = if (isDelicious) ColorProvider(Color.White) else GlanceTheme.colors.onBackground
 
     Box(
         modifier = GlanceModifier

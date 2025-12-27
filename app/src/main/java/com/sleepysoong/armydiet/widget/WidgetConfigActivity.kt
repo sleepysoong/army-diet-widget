@@ -6,6 +6,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,11 +73,15 @@ fun WidgetConfigScreen(
     val context = androidx.compose.ui.platform.LocalContext.current
     
     var fontScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_FONT_SCALE) }
+    var tagScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_TAG_SCALE) }
+    var headerScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_HEADER_SCALE) }
     var showCalories by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     
     LaunchedEffect(Unit) {
         fontScale = config.fontScale.first()
+        tagScale = config.tagScale.first()
+        headerScale = config.headerScale.first()
         showCalories = config.showCalories.first()
     }
     
@@ -83,6 +89,7 @@ fun WidgetConfigScreen(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
+            .verticalScroll(rememberScrollState())
     ) {
         Text(
             text = "위젯 설정",
@@ -95,11 +102,33 @@ fun WidgetConfigScreen(
         
         // 글자 크기
         ConfigSlider(
-            title = "글자 크기",
+            title = "기본 글자 크기",
             value = fontScale,
             valueRange = WidgetConfig.MIN_FONT_SCALE..WidgetConfig.MAX_FONT_SCALE,
             valueLabel = "${(fontScale * 100).toInt()}%",
             onValueChange = { fontScale = it }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // 태그 크기 비율
+        ConfigSlider(
+            title = "태그 크기 비율",
+            value = tagScale,
+            valueRange = WidgetConfig.MIN_TAG_SCALE..WidgetConfig.MAX_TAG_SCALE,
+            valueLabel = "x${String.format("%.1f", tagScale)}",
+            onValueChange = { tagScale = it }
+        )
+        
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // 날짜 크기 비율
+        ConfigSlider(
+            title = "날짜 크기 비율",
+            value = headerScale,
+            valueRange = WidgetConfig.MIN_HEADER_SCALE..WidgetConfig.MAX_HEADER_SCALE,
+            valueLabel = "x${String.format("%.1f", headerScale)}",
+            onValueChange = { headerScale = it }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -121,7 +150,7 @@ fun WidgetConfigScreen(
             )
         }
         
-        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Button(
             onClick = {
@@ -129,6 +158,8 @@ fun WidgetConfigScreen(
                     isSaving = true
                     scope.launch {
                         config.setFontScale(fontScale)
+                        config.setTagScale(tagScale)
+                        config.setHeaderScale(headerScale)
                         config.setShowCalories(showCalories)
                         
                         // DataStore 저장이 완료될 때까지 잠시 대기
