@@ -1,5 +1,9 @@
 package com.sleepysoong.armydiet
 
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -11,12 +15,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -104,8 +110,8 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     
     // 식단 데이터 로드
     LaunchedEffect(Unit) {
-        container.mealDao.getAllMealsFlow().collect { mealList ->
-            allMeals = mealList.associateBy { it.date }
+        container.mealDao.getAllMealsFlow().collect {
+            allMeals = it.associateBy { meal -> meal.date }
         }
     }
     
@@ -118,12 +124,12 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
                         text = "군대 식단",
                         fontWeight = FontWeight.Bold,
                         color = ArmyColors.Primary
-                    ) 
+                    )
                 },
                 actions = {
                     IconButton(onClick = {
@@ -200,7 +206,6 @@ fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<St
 
 @Composable
 fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
-    // Basic implementation, consider refactoring to separate file if complex
     var apiKey by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
 
@@ -220,7 +225,7 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
         Spacer(modifier = Modifier.height(16.dp))
         Text(
             text = "국방부 공공데이터 포털에서 발급받은\nAPI Key를 입력해주세요.",
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -232,7 +237,14 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
             label = { Text("API Key") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                if (apiKey.isNotBlank()) {
+                    onKeyEntered(apiKey.trim())
+                    focusManager.clearFocus()
+                }
+            })
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
@@ -316,7 +328,7 @@ fun MealContent(
             }
         }
 
-        Spacer(modifier = Modifier.height(24.dp))
+        Spacer(modifier = Modifier.height(32.dp))
         
         OutlinedButton(
             onClick = viewModel::loadMeal,
@@ -326,13 +338,6 @@ fun MealContent(
         }
         Spacer(modifier = Modifier.height(32.dp))
     }
-}
-
-private fun formatCalories(sumCal: String?): String? {
-    if (sumCal.isNullOrBlank()) return null
-    val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
-    val value = cleaned.toDoubleOrNull() ?: return null
-    return "${value.toInt()} kcal"
 }
 
 private fun formatCalories(sumCal: String?): String? {
