@@ -20,7 +20,7 @@ class WidgetConfig(private val context: Context) {
         const val DEFAULT_SHOW_CALORIES = 1
         
         const val MIN_FONT_SCALE = 0.7f
-        const val MAX_FONT_SCALE = 1.5f
+        const val MAX_FONT_SCALE = 2.0f
     }
     
     val fontScale: Flow<Float> = context.widgetDataStore.data

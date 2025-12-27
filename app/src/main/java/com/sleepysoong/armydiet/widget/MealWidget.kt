@@ -135,7 +135,7 @@ private fun CompactContent(data: WidgetData) {
         text = "${data.currentMeal.label}: $content",
         style = TextStyle(
             color = GlanceTheme.colors.onBackground,
-            fontSize = 10.sp * data.fontScale,
+            fontSize = 12.sp * data.fontScale,
             fontWeight = FontWeight.Normal
         ),
         maxLines = 3
@@ -144,8 +144,9 @@ private fun CompactContent(data: WidgetData) {
 
 @Composable
 private fun FullContent(data: WidgetData, isLarge: Boolean) {
-    val fontSize = (if (isLarge) 12 else 11).sp * data.fontScale
-    val labelWidth = if (isLarge) 32.dp else 28.dp
+    val baseFontSize = if (isLarge) 15.sp else 13.sp
+    val fontSize = baseFontSize * data.fontScale
+    val labelWidth = (if (isLarge) 34.dp else 30.dp) * data.fontScale
     
     Column(modifier = GlanceModifier.fillMaxWidth()) {
         MealType.entries.forEach { type ->
