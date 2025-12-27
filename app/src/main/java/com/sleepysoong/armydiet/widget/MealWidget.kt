@@ -16,6 +16,7 @@ import androidx.glance.layout.*
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
 import com.sleepysoong.armydiet.MainActivity
+import com.sleepysoong.armydiet.R
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
 import kotlinx.coroutines.Dispatchers
@@ -94,6 +95,13 @@ enum class MealType(val label: String) {
     DINNER("저녁")
 }
 
+private val pretendard = FontFamily(
+    Font(R.font.pretendard_bold, FontWeight.Bold),
+    Font(R.font.pretendard_semibold, FontWeight.SemiBold),
+    Font(R.font.pretendard_medium, FontWeight.Medium),
+    Font(R.font.pretendard_regular, FontWeight.Normal)
+)
+
 @Composable
 private fun WidgetContent(data: WidgetData, size: DpSize) {
     val isSmall = size.width < 200.dp || size.height < 120.dp
@@ -122,6 +130,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             Text(
                 text = data.displayDate,
                 style = TextStyle(
+                    fontFamily = pretendard,
                     color = darkGreen,
                     fontSize = headerFontSize,
                     fontWeight = FontWeight.Bold
@@ -133,6 +142,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                     Text(
                         text = " ($cal)",
                         style = TextStyle(
+                            fontFamily = pretendard,
                             color = GlanceTheme.colors.onSurfaceVariant,
                             fontSize = headerFontSize // 날짜와 동일한 크기
                         )
@@ -169,10 +179,11 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
             fontSize = fontSize,
             isCurrent = true
         )
-        Spacer(modifier = GlanceModifier.height(4.dp))
+        Spacer(modifier = GlanceModifier.height(2.dp))
         Text(
             text = content,
             style = TextStyle(
+                fontFamily = pretendard,
                 color = GlanceTheme.colors.onBackground,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Medium,
@@ -198,7 +209,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             Column(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .padding(vertical = 8.dp), // 끼니 사이 간격 확대 (4dp -> 8dp)
+                    .padding(vertical = 8.dp),
                 horizontalAlignment = Alignment.Start
             ) {
                 MealTag(
@@ -208,11 +219,12 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                     isCurrent = isCurrent
                 )
                 
-                Spacer(modifier = GlanceModifier.height(2.dp)) // 다시 좁게 수정
+                Spacer(modifier = GlanceModifier.height(2.dp))
                 
                 Text(
                     text = content,
                     style = TextStyle(
+                        fontFamily = pretendard,
                         color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
@@ -247,6 +259,7 @@ private fun MealTag(
         Text(
             text = label,
             style = TextStyle(
+                fontFamily = pretendard,
                 color = textColor,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Bold
