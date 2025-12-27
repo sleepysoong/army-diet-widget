@@ -8,7 +8,6 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -46,54 +45,36 @@ val AppTypography = Typography(
     labelSmall = TextStyle(fontFamily = Pretendard, fontWeight = FontWeight.Medium, fontSize = 11.sp)
 )
 
-// Dark Green Theme Colors
-object AppColors {
-    val DarkGreen = Color(0xFF1B5E20)
-    val DarkGreenLight = Color(0xFF2E7D32)
-    val DarkGreenDark = Color(0xFF0D3311)
-    val Surface = Color(0xFFFAFAFA)
-    val SurfaceDark = Color(0xFF121212)
-    val OnPrimary = Color.White
-    val OnSurface = Color(0xFF1C1B1F)
-    val OnSurfaceDark = Color(0xFFE6E1E5)
-    
-    // Tag/Chip colors
-    val TagBg = Color(0xFFE8E8E8)
-    val TagBgDark = Color(0xFF3D3D3D)
-}
-
 private val LightColorScheme = lightColorScheme(
-    primary = AppColors.DarkGreen,
-    onPrimary = AppColors.OnPrimary,
-    primaryContainer = Color(0xFFA5D6A7),
-    onPrimaryContainer = AppColors.DarkGreenDark,
-    secondary = AppColors.DarkGreenLight,
-    onSecondary = AppColors.OnPrimary,
-    background = AppColors.Surface,
-    onBackground = AppColors.OnSurface,
-    surface = AppColors.Surface,
-    onSurface = AppColors.OnSurface,
-    surfaceVariant = Color(0xFFF5F5F5),
-    onSurfaceVariant = Color(0xFF424242),
-    outline = Color(0xFFE0E0E0),
-    outlineVariant = Color(0xFFEEEEEE)
+    primary = ArmyColors.Primary,
+    onPrimary = ArmyColors.OnPrimary,
+    primaryContainer = ArmyColors.PrimaryContainer,
+    onPrimaryContainer = ArmyColors.PrimaryDark,
+    secondary = ArmyColors.PrimaryLight,
+    onSecondary = ArmyColors.OnPrimary,
+    background = ArmyColors.Background,
+    onBackground = ArmyColors.OnBackground,
+    surface = ArmyColors.Surface,
+    onSurface = ArmyColors.OnSurface,
+    surfaceVariant = ArmyColors.Background, // Use background color for variant in light mode
+    onSurfaceVariant = ArmyColors.OnSurfaceVariant,
+    outline = ArmyColors.OnSurfaceVariant.copy(alpha = 0.2f)
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFF81C784),
-    onPrimary = AppColors.DarkGreenDark,
-    primaryContainer = AppColors.DarkGreen,
-    onPrimaryContainer = Color(0xFFA5D6A7),
-    secondary = Color(0xFF81C784),
-    onSecondary = AppColors.DarkGreenDark,
-    background = AppColors.SurfaceDark,
-    onBackground = AppColors.OnSurfaceDark,
-    surface = Color(0xFF1E1E1E),
-    onSurface = AppColors.OnSurfaceDark,
-    surfaceVariant = Color(0xFF2D2D2D),
-    onSurfaceVariant = Color(0xFFBDBDBD),
-    outline = Color(0xFF424242),
-    outlineVariant = Color(0xFF363636)
+    primary = ArmyColors.PrimaryLight, // Lighter green for dark mode accessibility
+    onPrimary = ArmyColors.PrimaryDark,
+    primaryContainer = ArmyColors.PrimaryContainerDark,
+    onPrimaryContainer = ArmyColors.OnPrimary,
+    secondary = ArmyColors.PrimaryLight,
+    onSecondary = ArmyColors.PrimaryDark,
+    background = ArmyColors.BackgroundDark,
+    onBackground = ArmyColors.OnBackgroundDark,
+    surface = ArmyColors.SurfaceDark,
+    onSurface = ArmyColors.OnSurfaceDark,
+    surfaceVariant = ArmyColors.SurfaceDark,
+    onSurfaceVariant = ArmyColors.OnSurfaceVariantDark,
+    outline = ArmyColors.OnSurfaceVariantDark.copy(alpha = 0.2f)
 )
 
 @Composable
@@ -107,8 +88,8 @@ fun AppTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            window.statusBarColor = colorScheme.background.toArgb() // Match background
+            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
         }
     }
 

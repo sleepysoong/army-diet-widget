@@ -6,8 +6,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
@@ -15,15 +13,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,7 +28,12 @@ import com.sleepysoong.armydiet.ui.CalendarScreen
 import com.sleepysoong.armydiet.ui.MainViewModel
 import com.sleepysoong.armydiet.ui.MainViewModelFactory
 import com.sleepysoong.armydiet.ui.MealUiState
+import com.sleepysoong.armydiet.ui.components.EmptyState
+import com.sleepysoong.armydiet.ui.components.ErrorState
+import com.sleepysoong.armydiet.ui.components.LoadingState
+import com.sleepysoong.armydiet.ui.components.MealCard
 import com.sleepysoong.armydiet.ui.theme.AppTheme
+import com.sleepysoong.armydiet.ui.theme.ArmyColors
 import com.sleepysoong.armydiet.worker.SyncWorker
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -106,7 +104,7 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     
     // 식단 데이터 로드
     LaunchedEffect(Unit) {
-        container.mealDao.getAllMealsFlow().collect { meals ->
+        container.mealDao.getAllMealsFlow().collect {
             allMeals = meals.associateBy { it.date }
         }
     }
@@ -120,29 +118,51 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("군대 식단") },
+                title = { 
+                    Text(
+                        text = "군대 식단",
+                        fontWeight = FontWeight.Bold,
+                        color = ArmyColors.Primary
+                    ) 
+                },
                 actions = {
                     IconButton(onClick = {
                         context.startActivity(Intent(context, SettingsActivity::class.java))
                     }) {
-                        Icon(Icons.Default.Settings, contentDescription = "설정")
+                        Icon(Icons.Default.Settings, contentDescription = "설정", tint = ArmyColors.OnSurfaceVariant)
                     }
-                }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = ArmyColors.Surface,
+                )
             )
         },
         bottomBar = {
-            NavigationBar {
+            NavigationBar(
+                containerColor = ArmyColors.Surface,
+                tonalElevation = 8.dp
+            ) {
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Home, contentDescription = "오늘") },
                     label = { Text("오늘") },
                     selected = currentTab == 0,
-                    onClick = { currentTab = 0 }
+                    onClick = { currentTab = 0 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = ArmyColors.Primary,
+                        selectedTextColor = ArmyColors.Primary,
+                        indicatorColor = ArmyColors.PrimaryContainer
+                    )
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.DateRange, contentDescription = "캘린더") },
                     label = { Text("캘린더") },
                     selected = currentTab == 1,
-                    onClick = { currentTab = 1 }
+                    onClick = { currentTab = 1 },
+                    colors = NavigationBarItemDefaults.colors(
+                        selectedIconColor = ArmyColors.Primary,
+                        selectedTextColor = ArmyColors.Primary,
+                        indicatorColor = ArmyColors.PrimaryContainer
+                    )
                 )
             }
         }
@@ -165,69 +185,51 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
 
 @Composable
 fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<String>) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+    Box(modifier = Modifier.fillMaxSize()) {
         when (uiState) {
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
-            is MealUiState.Loading -> LoadingScreen()
-            is MealUiState.Error -> ErrorScreen(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
+            is MealUiState.Loading -> LoadingState()
+            is MealUiState.Error -> ErrorState(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
             is MealUiState.Success -> MealContent(uiState, viewModel, keywords)
         }
     }
 }
 
 @Composable
-private fun LoadingScreen() {
-    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-    }
-}
-
-@Composable
-private fun ErrorScreen(message: String, onRetry: () -> Unit, onReset: () -> Unit) {
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(text = message, color = MaterialTheme.colorScheme.error)
-        Spacer(modifier = Modifier.height(16.dp))
-        Button(onClick = onRetry) { Text("다시 시도") }
-        TextButton(onClick = onReset) { Text("API Key 재설정") }
-    }
-}
-
-@Composable
 fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
+    // Basic implementation, consider refactoring to separate file if complex
     var apiKey by remember { mutableStateOf("") }
-    val focusManager = LocalFocusManager.current
+    val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
 
-    Column(modifier = Modifier.fillMaxWidth().padding(top = 32.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
         Text(
-            text = "API Key 입력",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = "국방부 공공데이터 포털에서 발급받은 API Key를 입력하세요.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp
+            text = "API Key 필요",
+            style = MaterialTheme.typography.headlineMedium,
+            color = ArmyColors.Primary,
+            fontWeight = FontWeight.Bold
         )
         Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "국방부 공공데이터 포털에서 발급받은\nAPI Key를 입력해주세요.",
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        
         OutlinedTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
             label = { Text("API Key") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = {
-                if (apiKey.isNotBlank()) {
-                    onKeyEntered(apiKey.trim())
-                    focusManager.clearFocus()
-                }
-            })
+            shape = MaterialTheme.shapes.medium
         )
         Spacer(modifier = Modifier.height(16.dp))
         Button(
@@ -238,46 +240,72 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = apiKey.isNotBlank()
+            enabled = apiKey.isNotBlank(),
+            shape = MaterialTheme.shapes.medium
         ) {
-            Text("저장")
+            Text("시작하기")
         }
     }
 }
 
 @Composable
 fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: Set<String>) {
-    Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp)
+    ) {
+        // Date Header
         Text(
             text = state.targetDate,
-            fontSize = 18.sp,
+            style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = ArmyColors.Primary
         )
+        
+        formatCalories(state.meal?.sumCal)?.let { cal ->
+            Text(
+                text = "총 칼로리: $cal",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        
         Spacer(modifier = Modifier.height(16.dp))
 
         if (state.meal == null) {
-            Text("식단 정보 없음", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            EmptyState(message = "오늘의 식단 정보가 없습니다.")
         } else {
-            MealSection("조식", state.meal.breakfast, keywords)
-            MealSection("중식", state.meal.lunch, keywords)
-            MealSection("석식", state.meal.dinner, keywords)
+            MealCard("아침", state.meal.breakfast, keywords)
+            MealCard("점심", state.meal.lunch, keywords)
+            MealCard("저녁", state.meal.dinner, keywords)
             
             if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
-                MealSection("부식", state.meal.adspcfd, keywords)
-            }
-            formatCalories(state.meal.sumCal)?.let { cal ->
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = cal,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp
-                )
+                MealCard("부식", state.meal.adspcfd, keywords)
             }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
-        ActionButtons(viewModel::loadMeal, viewModel::resetApiKey)
+        
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            OutlinedButton(
+                onClick = viewModel::loadMeal,
+                modifier = Modifier.weight(1f)
+            ) { 
+                Text("새로고침") 
+            }
+            TextButton(
+                onClick = viewModel::resetApiKey,
+                modifier = Modifier.weight(1f)
+            ) { 
+                Text("키 재설정", color = MaterialTheme.colorScheme.error) 
+            }
+        }
+        Spacer(modifier = Modifier.height(32.dp))
     }
 }
 
@@ -286,51 +314,4 @@ private fun formatCalories(sumCal: String?): String? {
     val cleaned = sumCal.replace("kcal", "").replace("Kcal", "").replace("KCAL", "").trim()
     val value = cleaned.toDoubleOrNull() ?: return null
     return "${value.toInt()} kcal"
-}
-
-@Composable
-private fun MealSection(title: String, content: String, keywords: Set<String>) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
-        Text(
-            text = title,
-            fontWeight = FontWeight.Bold,
-            fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.primary
-        )
-        
-        val annotatedString = buildAnnotatedString {
-            append(content)
-            keywords.forEach { keyword ->
-                var startIndex = content.indexOf(keyword)
-                while (startIndex >= 0) {
-                    val endIndex = startIndex + keyword.length
-                    addStyle(
-                        style = SpanStyle(
-                            color = Color(0xFF1B5E20),
-                            fontWeight = FontWeight.Bold
-                        ),
-                        start = startIndex,
-                        end = endIndex
-                    )
-                    startIndex = content.indexOf(keyword, endIndex)
-                }
-            }
-        }
-        
-        Text(
-            text = annotatedString,
-            fontSize = 14.sp,
-            lineHeight = 20.sp,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
-}
-
-@Composable
-private fun ActionButtons(onRefresh: () -> Unit, onReset: () -> Unit) {
-    Row {
-        Button(onClick = onRefresh) { Text("새로고침") }
-        Spacer(modifier = Modifier.width(8.dp))
-        OutlinedButton(onClick = onReset) { Text("키 재설정") }
-    }
 }
