@@ -87,9 +87,9 @@ private data class WidgetData(
 )
 
 enum class MealType(val label: String) {
-    BREAKFAST("조식"),
-    LUNCH("중식"),
-    DINNER("석식")
+    BREAKFAST("아침"),
+    LUNCH("점심"),
+    DINNER("저녁")
 }
 
 @Composable
@@ -97,107 +97,138 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
     val isSmall = size.width < 200.dp || size.height < 120.dp
     val isLarge = size.width >= 280.dp && size.height >= 180.dp
     
+    // 다크 그린 색상 정의
+    val darkGreen = ColorProvider(android.graphics.Color.parseColor("#1B5E20"))
+    
     Column(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(GlanceTheme.colors.background)
             .clickable(actionStartActivity<MainActivity>())
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        // 날짜
-        Text(
-            text = data.displayDate,
-            style = TextStyle(
-                color = GlanceTheme.colors.primary,
-                fontSize = (if (isSmall) 11 else 13).sp * data.fontScale,
-                fontWeight = FontWeight.Bold,
-                textDecoration = TextDecoration.None
+        // 상단: 날짜 (칼로리) - 중앙 정렬
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = data.displayDate,
+                style = TextStyle(
+                    color = darkGreen,
+                    fontSize = (if (isSmall) 12 else 14).sp * data.fontScale,
+                    fontWeight = FontWeight.Bold
+                )
             )
-        )
+            
+            if (data.showCalories) {
+                formatCalories(data.meal?.sumCal)?.let { cal ->
+                    Text(
+                        text = " ($cal)",
+                        style = TextStyle(
+                            color = GlanceTheme.colors.onSurfaceVariant,
+                            fontSize = (if (isSmall) 11 else 13).sp * data.fontScale
+                        )
+                    )
+                }
+            }
+        }
         
-        Spacer(modifier = GlanceModifier.height(4.dp))
+        Spacer(modifier = GlanceModifier.height(8.dp))
         
         if (isSmall) {
-            // 작은 위젯: 현재 끼니만
-            CompactContent(data)
+            CompactContent(data, darkGreen)
         } else {
-            // 일반/큰 위젯: 전체 끼니
-            FullContent(data, isLarge)
+            FullContent(data, isLarge, darkGreen)
         }
     }
 }
 
 @Composable
-private fun CompactContent(data: WidgetData) {
+private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val content = getMealContent(data.meal, data.currentMeal)
+    val fontSize = 16.sp * data.fontScale // 대폭 키움
     
-    Text(
-        text = "${data.currentMeal.label}: $content",
-        style = TextStyle(
-            color = GlanceTheme.colors.onBackground,
-            fontSize = 12.sp * data.fontScale,
-            fontWeight = FontWeight.Normal
-        ),
-        maxLines = 3
-    )
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = GlanceModifier.fillMaxWidth()
+    ) {
+        MealTag(data.currentMeal.label, themeColor, data.fontScale)
+        Spacer(modifier = GlanceModifier.height(4.dp))
+        Text(
+            text = content,
+            style = TextStyle(
+                color = GlanceTheme.colors.onBackground,
+                fontSize = fontSize,
+                fontWeight = FontWeight.Medium,
+                textAlign = TextAlign.Center
+            ),
+            maxLines = 2
+        )
+    }
 }
 
 @Composable
-private fun FullContent(data: WidgetData, isLarge: Boolean) {
-    val baseFontSize = if (isLarge) 15.sp else 13.sp
-    val fontSize = baseFontSize * data.fontScale
-    val labelWidth = (if (isLarge) 34.dp else 30.dp) * data.fontScale
+private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorProvider) {
+    val fontSize = (if (isLarge) 20 else 18).sp * data.fontScale // 대폭 키움 (기존 대비 약 2배)
     
-    Column(modifier = GlanceModifier.fillMaxWidth()) {
+    Column(
+        modifier = GlanceModifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         MealType.entries.forEach { type ->
             val content = getMealContent(data.meal, type)
             val isCurrent = type == data.currentMeal
             
-            Row(
-                modifier = GlanceModifier.fillMaxWidth().padding(vertical = 1.dp),
-                verticalAlignment = Alignment.Top
+            Column(
+                modifier = GlanceModifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                // 라벨 (고정 폭)
-                Text(
-                    text = type.label,
-                    style = TextStyle(
-                        color = if (isCurrent) GlanceTheme.colors.primary else GlanceTheme.colors.onBackground,
-                        fontSize = fontSize,
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium
-                    ),
-                    modifier = GlanceModifier.width(labelWidth)
+                MealTag(
+                    label = type.label,
+                    color = if (isCurrent) themeColor else ColorProvider(android.graphics.Color.parseColor("#666666")),
+                    fontScale = data.fontScale,
+                    isCurrent = isCurrent
                 )
                 
-                // 메뉴 (남은 공간)
+                Spacer(modifier = GlanceModifier.height(2.dp))
+                
                 Text(
                     text = content,
                     style = TextStyle(
                         color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
-                        fontWeight = FontWeight.Normal
+                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                        textAlign = TextAlign.Center
                     ),
                     maxLines = if (isLarge) 3 else 2
                 )
             }
-            
-            if (type != MealType.DINNER) {
-                Spacer(modifier = GlanceModifier.height(2.dp))
-            }
         }
-        
-        // 칼로리
-        if (data.showCalories) {
-            formatCalories(data.meal?.sumCal)?.let { cal ->
-                Spacer(modifier = GlanceModifier.height(4.dp))
-                Text(
-                    text = cal,
-                    style = TextStyle(
-                        color = GlanceTheme.colors.onSurfaceVariant,
-                        fontSize = (fontSize.value * 0.9f).sp
-                    )
-                )
-            }
-        }
+    }
+}
+
+@Composable
+private fun MealTag(label: String, color: ColorProvider, fontScale: Float, isCurrent: Boolean = true) {
+    Box(
+        modifier = GlanceModifier
+            .background(if (isCurrent) color else ColorProvider(android.graphics.Color.TRANSPARENT))
+            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .cornerRadius(16.dp), // 완전 둥근 모서리
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                color = if (isCurrent) ColorProvider(android.graphics.Color.WHITE) else color,
+                fontSize = 12.sp * fontScale,
+                fontWeight = FontWeight.Bold
+            )
+        )
     }
 }
 
