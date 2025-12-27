@@ -48,7 +48,6 @@ class WidgetConfigActivity : ComponentActivity() {
                 ) {
                     WidgetConfigScreen(
                         config = config,
-                        appWidgetId = appWidgetId,
                         onSaveComplete = { finishWithSuccess() }
                     )
                 }
@@ -66,21 +65,19 @@ class WidgetConfigActivity : ComponentActivity() {
 @Composable
 fun WidgetConfigScreen(
     config: WidgetConfig,
-    appWidgetId: Int,
     onSaveComplete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val context = androidx.compose.ui.platform.LocalContext.current
     
     var fontScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_FONT_SCALE) }
-    var bgAlpha by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_BG_ALPHA) }
+    var letterSpacing by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_LETTER_SPACING) }
     var showCalories by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     
-    val context = androidx.compose.ui.platform.LocalContext.current
-    
     LaunchedEffect(Unit) {
         fontScale = config.fontScale.first()
-        bgAlpha = config.backgroundAlpha.first()
+        letterSpacing = config.letterSpacing.first()
         showCalories = config.showCalories.first()
     }
     
@@ -98,6 +95,7 @@ fun WidgetConfigScreen(
         
         Spacer(modifier = Modifier.height(24.dp))
         
+        // 글자 크기
         ConfigSlider(
             title = "글자 크기",
             value = fontScale,
@@ -108,16 +106,18 @@ fun WidgetConfigScreen(
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        // 자간
         ConfigSlider(
-            title = "배경 투명도",
-            value = bgAlpha,
-            valueRange = 0f..1f,
-            valueLabel = "${(bgAlpha * 100).toInt()}%",
-            onValueChange = { bgAlpha = it }
+            title = "자간",
+            value = letterSpacing,
+            valueRange = WidgetConfig.MIN_LETTER_SPACING..WidgetConfig.MAX_LETTER_SPACING,
+            valueLabel = "${(letterSpacing * 100).toInt()}%",
+            onValueChange = { letterSpacing = it }
         )
         
         Spacer(modifier = Modifier.height(16.dp))
         
+        // 칼로리 표시
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -141,15 +141,12 @@ fun WidgetConfigScreen(
                 if (!isSaving) {
                     isSaving = true
                     scope.launch {
-                        // 1. 설정 저장
                         config.setFontScale(fontScale)
-                        config.setBackgroundAlpha(bgAlpha)
+                        config.setLetterSpacing(letterSpacing)
                         config.setShowCalories(showCalories)
                         
-                        // 2. 저장 완료 대기
                         delay(100)
                         
-                        // 3. 위젯 강제 업데이트
                         try {
                             val manager = GlanceAppWidgetManager(context)
                             val glanceIds = manager.getGlanceIds(MealWidget::class.java)
@@ -157,14 +154,10 @@ fun WidgetConfigScreen(
                                 MealWidget().update(context, glanceId)
                             }
                         } catch (e: Exception) {
-                            // Fallback - broadcast update
                             MealWidgetReceiver.updateAllWidgets(context)
                         }
                         
-                        // 4. 업데이트 완료 대기
                         delay(200)
-                        
-                        // 5. 종료
                         onSaveComplete()
                     }
                 }
