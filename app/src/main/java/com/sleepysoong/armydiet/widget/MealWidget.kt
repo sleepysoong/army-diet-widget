@@ -102,6 +102,11 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
     val isSmall = size.width < 200.dp || size.height < 120.dp
     val isLarge = size.width >= 280.dp && size.height >= 180.dp
     
+    // 폰트 크기 계산 (메뉴 크기 기준)
+    val menuFontSize = (if (isSmall) 14 else if (isLarge) 18 else 16).sp * data.fontScale
+    val tagFontSize = (menuFontSize.value * 1.5f).sp
+    val headerFontSize = (menuFontSize.value * 2.5f).sp
+    
     // 다크 그린 색상 정의
     val darkGreen = ColorProvider(Color(0xFF1B5E20))
     
@@ -114,14 +119,12 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 상단: 날짜 (칼로리) - 중앙 정렬 및 크기 확대
+        // 상단: 날짜 (칼로리) - 중앙 정렬 및 크기 확대 (메뉴의 2.5배)
         Row(
             modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            val headerFontSize = (if (isSmall) 24 else 28).sp * data.fontScale
-            
             Text(
                 text = data.displayDate,
                 style = TextStyle(
@@ -137,7 +140,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                         text = " ($cal)",
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = headerFontSize // 날짜와 동일한 크기
+                            fontSize = headerFontSize
                         )
                     )
                 }
@@ -149,19 +152,23 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
         // 메뉴 섹션: 왼쪽 패딩 추가로 날짜 정렬과 구분
         Box(modifier = GlanceModifier.fillMaxWidth().padding(start = 12.dp)) {
             if (isSmall) {
-                CompactContent(data, darkGreen)
+                CompactContent(data, darkGreen, menuFontSize, tagFontSize)
             } else {
-                FullContent(data, isLarge, darkGreen)
+                FullContent(data, isLarge, darkGreen, menuFontSize, tagFontSize)
             }
         }
     }
 }
 
 @Composable
-private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
+private fun CompactContent(
+    data: WidgetData, 
+    themeColor: ColorProvider,
+    menuFontSize: TextUnit,
+    tagFontSize: TextUnit
+) {
     val content = getMealContent(data.meal, data.currentMeal)
     val menus = content.split(Regex("[\\s,]+")).filter { it.isNotBlank() }
-    val fontSize = 16.sp * data.fontScale
     
     Column(
         horizontalAlignment = Alignment.Start,
@@ -170,7 +177,7 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         MealTag(
             label = data.currentMeal.label, 
             activeColor = themeColor, 
-            fontSize = fontSize,
+            fontSize = tagFontSize,
             isCurrent = true
         )
         Spacer(modifier = GlanceModifier.height(4.dp))
@@ -179,7 +186,7 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         Row(modifier = GlanceModifier.fillMaxWidth()) {
             menus.forEachIndexed { index, menu ->
                 val isDelicious = data.keywords.any { menu.contains(it) }
-                MenuChip(menu, isDelicious, fontSize)
+                MenuChip(menu, isDelicious, menuFontSize)
                 if (index < menus.size - 1) {
                     Spacer(modifier = GlanceModifier.width(4.dp))
                 }
@@ -189,9 +196,13 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
 }
 
 @Composable
-private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorProvider) {
-    val fontSize = (if (isLarge) 20 else 18).sp * data.fontScale
-    
+private fun FullContent(
+    data: WidgetData, 
+    isLarge: Boolean, 
+    themeColor: ColorProvider,
+    menuFontSize: TextUnit,
+    tagFontSize: TextUnit
+) {
     Column(
         modifier = GlanceModifier.fillMaxWidth(),
         horizontalAlignment = Alignment.Start
@@ -210,7 +221,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 MealTag(
                     label = type.label,
                     activeColor = themeColor,
-                    fontSize = fontSize,
+                    fontSize = tagFontSize,
                     isCurrent = isCurrent
                 )
                 
@@ -219,7 +230,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 Row(modifier = GlanceModifier.fillMaxWidth()) {
                     menus.forEachIndexed { index, menu ->
                         val isDelicious = data.keywords.any { menu.contains(it) }
-                        MenuChip(menu, isDelicious, fontSize)
+                        MenuChip(menu, isDelicious, menuFontSize)
                         if (index < menus.size - 1) {
                             Spacer(modifier = GlanceModifier.width(4.dp))
                         }
@@ -260,9 +271,9 @@ private fun MealTag(
 
 @Composable
 private fun MenuChip(text: String, isDelicious: Boolean, fontSize: TextUnit) {
-    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else ColorProvider(Color.Transparent)
-    val textColor = if (isDelicious) ColorProvider(Color(0xFFF1F8E9)) else GlanceTheme.colors.onBackground
-    val fontWeight = if (isDelicious) FontWeight.Bold else FontWeight.Normal
+    // 하이라이트 스타일: 배경 연두색, 글자 다크그린, 볼드 제외
+    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFFC5E1A5)) else ColorProvider(Color.Transparent)
+    val textColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
 
     Box(
         modifier = GlanceModifier
@@ -276,7 +287,7 @@ private fun MenuChip(text: String, isDelicious: Boolean, fontSize: TextUnit) {
             style = TextStyle(
                 color = textColor,
                 fontSize = fontSize,
-                fontWeight = fontWeight
+                fontWeight = FontWeight.Normal // 볼드 제거
             )
         )
     }
