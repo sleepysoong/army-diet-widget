@@ -33,20 +33,26 @@ fun HighlightedText(
     }
 
     val annotatedString = buildAnnotatedString {
-        append(text)
-        keywords.forEach { keyword ->
-            var startIndex = text.indexOf(keyword)
-            while (startIndex >= 0) {
-                val endIndex = startIndex + keyword.length
-                addStyle(
-                    style = SpanStyle(
-                        color = highlightColor,
+        val tokens = text.split(" ")
+        tokens.forEachIndexed { index, token ->
+            val hasKeyword = keywords.any { token.contains(it) }
+            
+            if (hasKeyword) {
+                pushStyle(
+                    SpanStyle(
+                        background = ArmyColors.Highlighter,
+                        color = ArmyColors.HighlighterText,
                         fontWeight = FontWeight.Bold
-                    ),
-                    start = startIndex,
-                    end = endIndex
+                    )
                 )
-                startIndex = text.indexOf(keyword, endIndex)
+                append(token)
+                pop()
+            } else {
+                append(token)
+            }
+            
+            if (index < tokens.size - 1) {
+                append(" ")
             }
         }
     }

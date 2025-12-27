@@ -291,22 +291,11 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: 
 
         Spacer(modifier = Modifier.height(24.dp))
         
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = viewModel::loadMeal,
-                modifier = Modifier.weight(1f)
-            ) { 
-                Text("새로고침") 
-            }
-            TextButton(
-                onClick = viewModel::resetApiKey,
-                modifier = Modifier.weight(1f)
-            ) { 
-                Text("키 재설정", color = MaterialTheme.colorScheme.error) 
-            }
+        OutlinedButton(
+            onClick = viewModel::loadMeal,
+            modifier = Modifier.fillMaxWidth()
+        ) { 
+            Text("새로고침") 
         }
         Spacer(modifier = Modifier.height(32.dp))
     }

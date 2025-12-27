@@ -35,4 +35,8 @@ object ArmyColors {
     val Error = Color(0xFFDC2626)
     val Highlight = Color(0xFF1B5E20) // Highlight color for keywords
     val HighlightDark = Color(0xFF81C784)
+    
+    // Highlighter Style
+    val Highlighter = Color(0xFF1B5E20)
+    val HighlighterText = Color(0xFFF1F8E9)
 }

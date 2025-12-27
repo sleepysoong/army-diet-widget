@@ -112,6 +112,56 @@ fun SettingsScreen(
                     scope.launch { container.preferences.removeKeyword(keyword) }
                 }
             )
+            
+            Spacer(modifier = Modifier.weight(1f))
+            
+            ResetApiKeySection(
+                onReset = {
+                    scope.launch {
+                        container.preferences.saveApiKey("")
+                        // Optionally finish activity or show toast, but observing API key in Main will trigger UI change
+                        onBack() // Close settings to go back to main (which will show API input screen)
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun ResetApiKeySection(onReset: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = ArmyColors.Error.copy(alpha = 0.05f)
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, ArmyColors.Error.copy(alpha = 0.3f))
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp)
+        ) {
+            Text(
+                text = "API Key 초기화",
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = ArmyColors.Error
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "저장된 API Key를 삭제하고 다시 입력합니다.",
+                style = MaterialTheme.typography.bodySmall,
+                color = ArmyColors.Error.copy(alpha = 0.8f)
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = onReset,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = ArmyColors.Error
+                )
+            ) {
+                Text("초기화", color = androidx.compose.ui.graphics.Color.White)
+            }
         }
     }
 }

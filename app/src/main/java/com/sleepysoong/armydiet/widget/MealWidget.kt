@@ -163,8 +163,7 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val fontSize = 16.sp * data.fontScale
     
     // 키워드 포함 여부 확인
-    val hasKeyword = data.keywords.any { content.contains(it) }
-    val textColor = if (hasKeyword) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
+    val isDelicious = data.keywords.any { content.contains(it) }
     
     Column(
         horizontalAlignment = Alignment.Start,
@@ -174,15 +173,16 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
             label = data.currentMeal.label, 
             activeColor = themeColor, 
             fontSize = fontSize,
-            isCurrent = true
+            isCurrent = true,
+            isDelicious = isDelicious
         )
         Spacer(modifier = GlanceModifier.height(2.dp))
         Text(
             text = content,
             style = TextStyle(
-                color = textColor,
+                color = GlanceTheme.colors.onBackground,
                 fontSize = fontSize,
-                fontWeight = if (hasKeyword) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = FontWeight.Medium,
                 textAlign = TextAlign.Start
             ),
             maxLines = 2
@@ -203,8 +203,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             val isCurrent = type == data.currentMeal
             
             // 키워드 포함 여부 확인
-            val hasKeyword = data.keywords.any { content.contains(it) }
-            val textColor = if (hasKeyword) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
+            val isDelicious = data.keywords.any { content.contains(it) }
             
             Column(
                 modifier = GlanceModifier
@@ -216,7 +215,8 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                     label = type.label,
                     activeColor = themeColor,
                     fontSize = fontSize,
-                    isCurrent = isCurrent
+                    isCurrent = isCurrent,
+                    isDelicious = isDelicious
                 )
                 
                 Spacer(modifier = GlanceModifier.height(2.dp))
@@ -224,9 +224,9 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 Text(
                     text = content,
                     style = TextStyle(
-                        color = textColor,
+                        color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
-                        fontWeight = if (isCurrent || hasKeyword) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                         textAlign = TextAlign.Start
                     ),
                     maxLines = if (isLarge) 3 else 2
@@ -241,12 +241,15 @@ private fun MealTag(
     label: String, 
     activeColor: ColorProvider, 
     fontSize: TextUnit, 
-    isCurrent: Boolean
+    isCurrent: Boolean,
+    isDelicious: Boolean = false
 ) {
     // 활성화: 다크그린 배경 / 흰색 글씨
     // 비활성화: 회색 배경 / 진한 회색 글씨
     val backgroundColor = if (isCurrent) activeColor else ColorProvider(Color(0xFFE0E0E0))
     val textColor = if (isCurrent) ColorProvider(Color.White) else ColorProvider(Color(0xFF424242))
+    
+    val displayText = if (isDelicious) "$label ★" else label
 
     Box(
         modifier = GlanceModifier
@@ -256,7 +259,7 @@ private fun MealTag(
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = label,
+            text = displayText,
             style = TextStyle(
                 color = textColor,
                 fontSize = fontSize,
