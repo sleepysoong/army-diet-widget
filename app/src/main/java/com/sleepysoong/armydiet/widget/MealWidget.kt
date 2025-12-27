@@ -64,7 +64,8 @@ class MealWidget : GlanceAppWidget() {
             displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M월 d일")),
             currentMeal = getCurrentMealType(),
             fontScale = config.fontScale.first(),
-            showCalories = config.showCalories.first()
+            showCalories = config.showCalories.first(),
+            keywords = container.preferences.highlightKeywords.first()
         )
     }
 
@@ -86,7 +87,8 @@ private data class WidgetData(
     val displayDate: String,
     val currentMeal: MealType,
     val fontScale: Float,
-    val showCalories: Boolean
+    val showCalories: Boolean,
+    val keywords: Set<String>
 )
 
 enum class MealType(val label: String) {
@@ -160,6 +162,10 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val content = getMealContent(data.meal, data.currentMeal)
     val fontSize = 16.sp * data.fontScale
     
+    // 키워드 포함 여부 확인
+    val hasKeyword = data.keywords.any { content.contains(it) }
+    val textColor = if (hasKeyword) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
+    
     Column(
         horizontalAlignment = Alignment.Start,
         modifier = GlanceModifier.fillMaxWidth()
@@ -174,9 +180,9 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         Text(
             text = content,
             style = TextStyle(
-                color = GlanceTheme.colors.onBackground,
+                color = textColor,
                 fontSize = fontSize,
-                fontWeight = FontWeight.Medium,
+                fontWeight = if (hasKeyword) FontWeight.Bold else FontWeight.Medium,
                 textAlign = TextAlign.Start
             ),
             maxLines = 2
@@ -196,6 +202,10 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             val content = getMealContent(data.meal, type)
             val isCurrent = type == data.currentMeal
             
+            // 키워드 포함 여부 확인
+            val hasKeyword = data.keywords.any { content.contains(it) }
+            val textColor = if (hasKeyword) ColorProvider(Color(0xFF1B5E20)) else GlanceTheme.colors.onBackground
+            
             Column(
                 modifier = GlanceModifier
                     .fillMaxWidth()
@@ -214,9 +224,9 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 Text(
                     text = content,
                     style = TextStyle(
-                        color = GlanceTheme.colors.onBackground,
+                        color = textColor,
                         fontSize = fontSize,
-                        fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
+                        fontWeight = if (isCurrent || hasKeyword) FontWeight.Bold else FontWeight.Normal,
                         textAlign = TextAlign.Start
                     ),
                     maxLines = if (isLarge) 3 else 2

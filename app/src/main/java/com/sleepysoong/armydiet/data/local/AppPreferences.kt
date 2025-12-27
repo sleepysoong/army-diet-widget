@@ -21,6 +21,13 @@ class AppPreferences(private val context: Context) {
     private val API_KEY = stringPreferencesKey("api_key")
     private val LAST_CHECKED_INDEX = intPreferencesKey("last_checked_index")
     private val LAST_CHECKED_TIMESTAMP = longPreferencesKey("last_checked_timestamp")
+    private val KEYWORD_LIST = stringPreferencesKey("highlight_keywords")
+
+    companion object {
+        val DEFAULT_KEYWORDS = setOf(
+            "소시지", "소세지", "닭", "삼겹살", "불고기", "돈가스", "갈비", "돼지", "소고기", "고기"
+        )
+    }
 
     val apiKey: Flow<String?> = context.dataStore.data
         .catch { exception ->
@@ -39,6 +46,16 @@ class AppPreferences(private val context: Context) {
     val lastCheckedTimestamp: Flow<Long> = context.dataStore.data
         .map { preferences -> preferences[LAST_CHECKED_TIMESTAMP] ?: 0L }
 
+    val highlightKeywords: Flow<Set<String>> = context.dataStore.data
+        .map { preferences ->
+            val stored = preferences[KEYWORD_LIST]
+            if (stored.isNullOrBlank()) {
+                DEFAULT_KEYWORDS
+            } else {
+                stored.split(",").filter { it.isNotBlank() }.toSet()
+            }
+        }
+
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences ->
             preferences[API_KEY] = key
@@ -49,6 +66,24 @@ class AppPreferences(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[LAST_CHECKED_INDEX] = index
             preferences[LAST_CHECKED_TIMESTAMP] = timestamp
+        }
+    }
+
+    suspend fun addKeyword(keyword: String) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[KEYWORD_LIST]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet()
+                ?: DEFAULT_KEYWORDS.toMutableSet()
+            current.add(keyword.trim())
+            preferences[KEYWORD_LIST] = current.joinToString(",")
+        }
+    }
+
+    suspend fun removeKeyword(keyword: String) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[KEYWORD_LIST]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet()
+                ?: DEFAULT_KEYWORDS.toMutableSet()
+            current.remove(keyword.trim())
+            preferences[KEYWORD_LIST] = current.joinToString(",")
         }
     }
 }

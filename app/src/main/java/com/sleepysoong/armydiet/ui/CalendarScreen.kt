@@ -20,6 +20,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,12 +78,13 @@ fun CalendarScreen(
                 )
             }
             
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
             // 식단 정보 (오른쪽)
             SelectedDateMeal(
                 date = selectedDate,
                 meal = selectedMeal,
+                keywords = keywords,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight()
@@ -109,6 +112,7 @@ fun CalendarScreen(
             SelectedDateMeal(
                 date = selectedDate,
                 meal = selectedMeal,
+                keywords = keywords,
                 modifier = Modifier.weight(0.55f)
             )
         }
@@ -277,6 +281,7 @@ private fun DayCell(
 private fun SelectedDateMeal(
     date: LocalDate,
     meal: MealEntity?,
+    keywords: Set<String>,
     modifier: Modifier = Modifier
 ) {
     val displayDate = date.format(DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN))
@@ -309,9 +314,9 @@ private fun SelectedDateMeal(
                     fontSize = 14.sp
                 )
             } else {
-                MealItem("조식", cleanAllergyInfo(meal.breakfast))
-                MealItem("중식", cleanAllergyInfo(meal.lunch))
-                MealItem("석식", cleanAllergyInfo(meal.dinner))
+                MealItem("조식", cleanAllergyInfo(meal.breakfast), keywords)
+                MealItem("중식", cleanAllergyInfo(meal.lunch), keywords)
+                MealItem("석식", cleanAllergyInfo(meal.dinner), keywords)
                 
                 formatCalories(meal.sumCal)?.let { cal ->
                     Spacer(modifier = Modifier.height(8.dp))
@@ -327,7 +332,7 @@ private fun SelectedDateMeal(
 }
 
 @Composable
-private fun MealItem(title: String, content: String) {
+private fun MealItem(title: String, content: String, keywords: Set<String>) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(
             text = title,
@@ -335,8 +340,29 @@ private fun MealItem(title: String, content: String) {
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
+        
+        val displayText = if (content.isBlank() || content == "메뉴 정보 없음") "-" else content
+        val annotatedString = buildAnnotatedString {
+            append(displayText)
+            keywords.forEach { keyword ->
+                var startIndex = displayText.indexOf(keyword)
+                while (startIndex >= 0) {
+                    val endIndex = startIndex + keyword.length
+                    addStyle(
+                        style = SpanStyle(
+                            color = Color(0xFF1B5E20),
+                            fontWeight = FontWeight.Bold
+                        ),
+                        start = startIndex,
+                        end = endIndex
+                    )
+                    startIndex = displayText.indexOf(keyword, endIndex)
+                }
+            }
+        }
+        
         Text(
-            text = if (content.isBlank() || content == "메뉴 정보 없음") "-" else content,
+            text = annotatedString,
             fontSize = 13.sp,
             lineHeight = 18.sp,
             color = MaterialTheme.colorScheme.onSurface

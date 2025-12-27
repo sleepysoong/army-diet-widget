@@ -1,5 +1,6 @@
 package com.sleepysoong.armydiet
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -11,11 +12,16 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -85,10 +91,13 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     var currentTab by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
+    val context = LocalContext.current
     
     // 캘린더용 상태
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
@@ -109,6 +118,18 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     }
 
     Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("군대 식단") },
+                actions = {
+                    IconButton(onClick = {
+                        context.startActivity(Intent(context, SettingsActivity::class.java))
+                    }) {
+                        Icon(Icons.Default.Settings, contentDescription = "설정")
+                    }
+                }
+            )
+        },
         bottomBar = {
             NavigationBar {
                 NavigationBarItem(
@@ -128,12 +149,13 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentTab) {
-                0 -> TodayScreen(uiState, viewModel)
+                0 -> TodayScreen(uiState, viewModel, keywords)
                 1 -> CalendarScreen(
                     selectedDate = selectedDate,
                     onDateSelected = { selectedDate = it },
                     mealData = allMeals,
                     selectedMeal = selectedMeal,
+                    keywords = keywords,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
             }
@@ -142,13 +164,13 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
 }
 
 @Composable
-fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel) {
+fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<String>) {
     Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
         when (uiState) {
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
             is MealUiState.Loading -> LoadingScreen()
             is MealUiState.Error -> ErrorScreen(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
-            is MealUiState.Success -> MealContent(uiState, viewModel)
+            is MealUiState.Success -> MealContent(uiState, viewModel, keywords)
         }
     }
 }
@@ -224,7 +246,7 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
 }
 
 @Composable
-fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
+fun MealContent(state: MealUiState.Success, viewModel: MainViewModel, keywords: Set<String>) {
     Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Text(
             text = state.targetDate,
@@ -237,12 +259,12 @@ fun MealContent(state: MealUiState.Success, viewModel: MainViewModel) {
         if (state.meal == null) {
             Text("식단 정보 없음", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
-            MealSection("조식", state.meal.breakfast)
-            MealSection("중식", state.meal.lunch)
-            MealSection("석식", state.meal.dinner)
+            MealSection("조식", state.meal.breakfast, keywords)
+            MealSection("중식", state.meal.lunch, keywords)
+            MealSection("석식", state.meal.dinner, keywords)
             
             if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") {
-                MealSection("부식", state.meal.adspcfd)
+                MealSection("부식", state.meal.adspcfd, keywords)
             }
             formatCalories(state.meal.sumCal)?.let { cal ->
                 Spacer(modifier = Modifier.height(8.dp))
@@ -267,7 +289,7 @@ private fun formatCalories(sumCal: String?): String? {
 }
 
 @Composable
-private fun MealSection(title: String, content: String) {
+private fun MealSection(title: String, content: String, keywords: Set<String>) {
     Column(modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
         Text(
             text = title,
@@ -275,8 +297,28 @@ private fun MealSection(title: String, content: String) {
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.primary
         )
+        
+        val annotatedString = buildAnnotatedString {
+            append(content)
+            keywords.forEach { keyword ->
+                var startIndex = content.indexOf(keyword)
+                while (startIndex >= 0) {
+                    val endIndex = startIndex + keyword.length
+                    addStyle(
+                        style = SpanStyle(
+                            color = Color(0xFF1B5E20),
+                            fontWeight = FontWeight.Bold
+                        ),
+                        start = startIndex,
+                        end = endIndex
+                    )
+                    startIndex = content.indexOf(keyword, endIndex)
+                }
+            }
+        }
+        
         Text(
-            text = content,
+            text = annotatedString,
             fontSize = 14.sp,
             lineHeight = 20.sp,
             color = MaterialTheme.colorScheme.onSurface

@@ -28,6 +28,12 @@
         </activity>
 
         <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.ArmyDiet"
+            android:label="설정" />
+
+        <activity
             android:name=".widget.WidgetConfigActivity"
             android:exported="true"
             android:theme="@style/Theme.ArmyDiet">
