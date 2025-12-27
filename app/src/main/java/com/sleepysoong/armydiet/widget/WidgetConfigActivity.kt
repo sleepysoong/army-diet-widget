@@ -13,7 +13,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.glance.appwidget.GlanceAppWidgetManager
 import com.sleepysoong.armydiet.ui.theme.AppTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -24,10 +26,8 @@ class WidgetConfigActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // Set result to CANCELED in case user backs out
         setResult(RESULT_CANCELED)
         
-        // Get widget ID from intent
         appWidgetId = intent?.extras?.getInt(
             AppWidgetManager.EXTRA_APPWIDGET_ID,
             AppWidgetManager.INVALID_APPWIDGET_ID
@@ -48,18 +48,15 @@ class WidgetConfigActivity : ComponentActivity() {
                 ) {
                     WidgetConfigScreen(
                         config = config,
-                        onSave = { saveAndFinish() }
+                        appWidgetId = appWidgetId,
+                        onSaveComplete = { finishWithSuccess() }
                     )
                 }
             }
         }
     }
     
-    private fun saveAndFinish() {
-        // Update widget
-        MealWidgetReceiver.updateAllWidgets(applicationContext)
-        
-        // Return success
+    private fun finishWithSuccess() {
         val resultValue = Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
         setResult(RESULT_OK, resultValue)
         finish()
@@ -67,14 +64,20 @@ class WidgetConfigActivity : ComponentActivity() {
 }
 
 @Composable
-fun WidgetConfigScreen(config: WidgetConfig, onSave: () -> Unit) {
+fun WidgetConfigScreen(
+    config: WidgetConfig,
+    appWidgetId: Int,
+    onSaveComplete: () -> Unit
+) {
     val scope = rememberCoroutineScope()
     
     var fontScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_FONT_SCALE) }
     var bgAlpha by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_BG_ALPHA) }
     var showCalories by remember { mutableStateOf(true) }
+    var isSaving by remember { mutableStateOf(false) }
     
-    // Load current values
+    val context = androidx.compose.ui.platform.LocalContext.current
+    
     LaunchedEffect(Unit) {
         fontScale = config.fontScale.first()
         bgAlpha = config.backgroundAlpha.first()
@@ -95,7 +98,6 @@ fun WidgetConfigScreen(config: WidgetConfig, onSave: () -> Unit) {
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // Font Scale
         ConfigSlider(
             title = "글자 크기",
             value = fontScale,
@@ -106,7 +108,6 @@ fun WidgetConfigScreen(config: WidgetConfig, onSave: () -> Unit) {
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Background Alpha
         ConfigSlider(
             title = "배경 투명도",
             value = bgAlpha,
@@ -117,7 +118,6 @@ fun WidgetConfigScreen(config: WidgetConfig, onSave: () -> Unit) {
         
         Spacer(modifier = Modifier.height(16.dp))
         
-        // Show Calories
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -136,19 +136,51 @@ fun WidgetConfigScreen(config: WidgetConfig, onSave: () -> Unit) {
         
         Spacer(modifier = Modifier.weight(1f))
         
-        // Save Button
         Button(
             onClick = {
-                scope.launch {
-                    config.setFontScale(fontScale)
-                    config.setBackgroundAlpha(bgAlpha)
-                    config.setShowCalories(showCalories)
-                    onSave()
+                if (!isSaving) {
+                    isSaving = true
+                    scope.launch {
+                        // 1. 설정 저장
+                        config.setFontScale(fontScale)
+                        config.setBackgroundAlpha(bgAlpha)
+                        config.setShowCalories(showCalories)
+                        
+                        // 2. 저장 완료 대기
+                        delay(100)
+                        
+                        // 3. 위젯 강제 업데이트
+                        try {
+                            val manager = GlanceAppWidgetManager(context)
+                            val glanceIds = manager.getGlanceIds(MealWidget::class.java)
+                            glanceIds.forEach { glanceId ->
+                                MealWidget().update(context, glanceId)
+                            }
+                        } catch (e: Exception) {
+                            // Fallback - broadcast update
+                            MealWidgetReceiver.updateAllWidgets(context)
+                        }
+                        
+                        // 4. 업데이트 완료 대기
+                        delay(200)
+                        
+                        // 5. 종료
+                        onSaveComplete()
+                    }
                 }
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isSaving
         ) {
-            Text("저장")
+            if (isSaving) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+            }
+            Text(if (isSaving) "저장 중..." else "저장")
         }
     }
 }
