@@ -12,8 +12,6 @@ import androidx.glance.*
 import androidx.glance.action.actionStartActivity
 import androidx.glance.action.clickable
 import androidx.glance.appwidget.*
-import androidx.glance.appwidget.lazy.LazyRow
-import androidx.glance.appwidget.lazy.items
 import androidx.glance.layout.*
 import androidx.glance.text.*
 import androidx.glance.unit.ColorProvider
@@ -177,12 +175,14 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
         )
         Spacer(modifier = GlanceModifier.height(4.dp))
         
-        // Menu List (Horizontal Scroll)
-        LazyRow(modifier = GlanceModifier.fillMaxWidth()) {
-            items(menus) { menu ->
+        // Menu List (Horizontal - Clipped if too long)
+        Row(modifier = GlanceModifier.fillMaxWidth()) {
+            menus.forEachIndexed { index, menu ->
                 val isDelicious = data.keywords.any { menu.contains(it) }
                 MenuChip(menu, isDelicious, fontSize)
-                Spacer(modifier = GlanceModifier.width(4.dp))
+                if (index < menus.size - 1) {
+                    Spacer(modifier = GlanceModifier.width(4.dp))
+                }
             }
         }
     }
@@ -216,11 +216,13 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 
                 Spacer(modifier = GlanceModifier.height(4.dp))
                 
-                LazyRow(modifier = GlanceModifier.fillMaxWidth()) {
-                    items(menus) { menu ->
+                Row(modifier = GlanceModifier.fillMaxWidth()) {
+                    menus.forEachIndexed { index, menu ->
                         val isDelicious = data.keywords.any { menu.contains(it) }
                         MenuChip(menu, isDelicious, fontSize)
-                        Spacer(modifier = GlanceModifier.width(4.dp))
+                        if (index < menus.size - 1) {
+                            Spacer(modifier = GlanceModifier.width(4.dp))
+                        }
                     }
                 }
             }
