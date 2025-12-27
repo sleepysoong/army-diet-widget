@@ -208,7 +208,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                     isCurrent = isCurrent
                 )
                 
-                Spacer(modifier = GlanceModifier.height(4.dp)) // 태그와 메뉴 사이 간격 살짝 확대
+                Spacer(modifier = GlanceModifier.height(2.dp)) // 다시 좁게 수정
                 
                 Text(
                     text = content,
