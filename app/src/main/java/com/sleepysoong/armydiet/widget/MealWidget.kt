@@ -111,8 +111,9 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 상단: 날짜 (칼로리) - 중앙 정렬
+        // 상단: 날짜 (칼로리) - 중앙 정렬 및 크기 확대
         Row(
+            modifier = GlanceModifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -120,7 +121,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                 text = data.displayDate,
                 style = TextStyle(
                     color = darkGreen,
-                    fontSize = (if (isSmall) 12 else 14).sp * data.fontScale,
+                    fontSize = (if (isSmall) 24 else 28).sp * data.fontScale, // 기존 대비 2배 확대
                     fontWeight = FontWeight.Bold
                 )
             )
@@ -131,14 +132,14 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
                         text = " ($cal)",
                         style = TextStyle(
                             color = GlanceTheme.colors.onSurfaceVariant,
-                            fontSize = (if (isSmall) 11 else 13).sp * data.fontScale
+                            fontSize = (if (isSmall) 14 else 16).sp * data.fontScale
                         )
                     )
                 }
             }
         }
         
-        Spacer(modifier = GlanceModifier.height(8.dp))
+        Spacer(modifier = GlanceModifier.height(12.dp))
         
         if (isSmall) {
             CompactContent(data, darkGreen)
@@ -151,10 +152,10 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
 @Composable
 private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val content = getMealContent(data.meal, data.currentMeal)
-    val fontSize = 16.sp * data.fontScale // 대폭 키움
+    val fontSize = 16.sp * data.fontScale
     
     Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+        horizontalAlignment = Alignment.Start, // 왼쪽 정렬
         modifier = GlanceModifier.fillMaxWidth()
     ) {
         MealTag(data.currentMeal.label, themeColor, data.fontScale)
@@ -165,7 +166,7 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
                 color = GlanceTheme.colors.onBackground,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Center
+                textAlign = TextAlign.Start // 왼쪽 정렬
             ),
             maxLines = 2
         )
@@ -174,11 +175,11 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
 
 @Composable
 private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorProvider) {
-    val fontSize = (if (isLarge) 20 else 18).sp * data.fontScale // 대폭 키움 (기존 대비 약 2배)
+    val fontSize = (if (isLarge) 20 else 18).sp * data.fontScale
     
     Column(
         modifier = GlanceModifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.CenterHorizontally
+        horizontalAlignment = Alignment.Start // 왼쪽 정렬
     ) {
         MealType.entries.forEach { type ->
             val content = getMealContent(data.meal, type)
@@ -188,7 +189,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                 modifier = GlanceModifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.Start // 왼쪽 정렬
             ) {
                 MealTag(
                     label = type.label,
@@ -205,7 +206,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                         color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Start // 왼쪽 정렬
                     ),
                     maxLines = if (isLarge) 3 else 2
                 )
