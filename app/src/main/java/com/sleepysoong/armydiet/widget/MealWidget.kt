@@ -143,10 +143,13 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
         
         Spacer(modifier = GlanceModifier.height(12.dp))
         
-        if (isSmall) {
-            CompactContent(data, darkGreen)
-        } else {
-            FullContent(data, isLarge, darkGreen)
+        // 메뉴 섹션: 왼쪽 패딩 추가로 날짜 정렬과 구분
+        Box(modifier = GlanceModifier.fillMaxWidth().padding(start = 12.dp)) {
+            if (isSmall) {
+                CompactContent(data, darkGreen)
+            } else {
+                FullContent(data, isLarge, darkGreen)
+            }
         }
     }
 }
@@ -157,13 +160,13 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
     val fontSize = 16.sp * data.fontScale
     
     Column(
-        horizontalAlignment = Alignment.Start, // 왼쪽 정렬
+        horizontalAlignment = Alignment.Start,
         modifier = GlanceModifier.fillMaxWidth()
     ) {
         MealTag(
             label = data.currentMeal.label, 
             activeColor = themeColor, 
-            fontSize = fontSize, // 메뉴와 동일한 크기
+            fontSize = fontSize,
             isCurrent = true
         )
         Spacer(modifier = GlanceModifier.height(4.dp))
@@ -173,7 +176,7 @@ private fun CompactContent(data: WidgetData, themeColor: ColorProvider) {
                 color = GlanceTheme.colors.onBackground,
                 fontSize = fontSize,
                 fontWeight = FontWeight.Medium,
-                textAlign = TextAlign.Start // 왼쪽 정렬
+                textAlign = TextAlign.Start
             ),
             maxLines = 2
         )
@@ -186,7 +189,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
     
     Column(
         modifier = GlanceModifier.fillMaxWidth(),
-        horizontalAlignment = Alignment.Start // 왼쪽 정렬
+        horizontalAlignment = Alignment.Start
     ) {
         MealType.entries.forEach { type ->
             val content = getMealContent(data.meal, type)
@@ -195,17 +198,17 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
             Column(
                 modifier = GlanceModifier
                     .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                horizontalAlignment = Alignment.Start // 왼쪽 정렬
+                    .padding(vertical = 8.dp), // 끼니 사이 간격 확대 (4dp -> 8dp)
+                horizontalAlignment = Alignment.Start
             ) {
                 MealTag(
                     label = type.label,
                     activeColor = themeColor,
-                    fontSize = fontSize, // 메뉴와 동일한 크기
+                    fontSize = fontSize,
                     isCurrent = isCurrent
                 )
                 
-                Spacer(modifier = GlanceModifier.height(2.dp))
+                Spacer(modifier = GlanceModifier.height(4.dp)) // 태그와 메뉴 사이 간격 살짝 확대
                 
                 Text(
                     text = content,
@@ -213,7 +216,7 @@ private fun FullContent(data: WidgetData, isLarge: Boolean, themeColor: ColorPro
                         color = GlanceTheme.colors.onBackground,
                         fontSize = fontSize,
                         fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
-                        textAlign = TextAlign.Start // 왼쪽 정렬
+                        textAlign = TextAlign.Start
                     ),
                     maxLines = if (isLarge) 3 else 2
                 )
