@@ -7,7 +7,6 @@ import com.sleepysoong.armydiet.data.local.MealDao
 import com.sleepysoong.armydiet.data.remote.MndApi
 import com.sleepysoong.armydiet.data.remote.NetworkModule
 import com.sleepysoong.armydiet.domain.MealRepository
-import com.sleepysoong.armydiet.widget.WidgetConfig
 
 /**
  * 수동 DI 컨테이너
@@ -35,10 +34,6 @@ class AppContainer private constructor(context: Context) {
     // Preferences
     val preferences: AppPreferences by lazy {
         AppPreferences(appContext)
-    }
-    
-    val widgetConfig: WidgetConfig by lazy {
-        WidgetConfig(appContext)
     }
     
     // Repository

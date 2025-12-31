@@ -32,6 +32,19 @@ class MealWidgetReceiver : GlanceAppWidgetReceiver() {
                 }
             }
         }
+        
+        fun updateWidget(context: Context, appWidgetId: Int) {
+            CoroutineScope(Dispatchers.Main).launch {
+                try {
+                    val manager = GlanceAppWidgetManager(context)
+                    val glanceId = manager.getGlanceIdBy(appWidgetId)
+                    MealWidget().update(context, glanceId)
+                } catch (e: Exception) {
+                    // Fallback to update all
+                    updateAllWidgets(context)
+                }
+            }
+        }
     }
 
     override fun onReceive(context: Context, intent: Intent) {
@@ -54,5 +67,15 @@ class MealWidgetReceiver : GlanceAppWidgetReceiver() {
     ) {
         super.onUpdate(context, appWidgetManager, appWidgetIds)
         updateAllWidgets(context)
+    }
+    
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        super.onDeleted(context, appWidgetIds)
+        // 위젯 삭제 시 해당 위젯의 설정 정리
+        CoroutineScope(Dispatchers.IO).launch {
+            appWidgetIds.forEach { appWidgetId ->
+                WidgetConfig.clearConfig(context, appWidgetId)
+            }
+        }
     }
 }

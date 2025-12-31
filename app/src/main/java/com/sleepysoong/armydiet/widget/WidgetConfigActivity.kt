@@ -40,7 +40,7 @@ class WidgetConfigActivity : ComponentActivity() {
             return
         }
         
-        val config = WidgetConfig(applicationContext)
+        val config = WidgetConfig(applicationContext, appWidgetId)
         
         setContent {
             AppTheme {
@@ -50,6 +50,7 @@ class WidgetConfigActivity : ComponentActivity() {
                 ) {
                     WidgetConfigScreen(
                         config = config,
+                        appWidgetId = appWidgetId,
                         onSaveComplete = { finishWithSuccess() }
                     )
                 }
@@ -67,6 +68,7 @@ class WidgetConfigActivity : ComponentActivity() {
 @Composable
 fun WidgetConfigScreen(
     config: WidgetConfig,
+    appWidgetId: Int,
     onSaveComplete: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -165,8 +167,8 @@ fun WidgetConfigScreen(
                         // DataStore 저장이 완료될 때까지 잠시 대기
                         delay(100)
                         
-                        // 위젯 업데이트 요청
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        // 해당 위젯만 업데이트 요청
+                        MealWidgetReceiver.updateWidget(context, appWidgetId)
                         
                         delay(200)
                         onSaveComplete()

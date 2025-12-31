@@ -41,7 +41,11 @@ class MealWidget : GlanceAppWidget() {
     )
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val data = loadWidgetData(context)
+        // GlanceId에서 appWidgetId 추출
+        val manager = GlanceAppWidgetManager(context)
+        val appWidgetId = manager.getAppWidgetId(id)
+        
+        val data = loadWidgetData(context, appWidgetId)
         
         provideContent {
             GlanceTheme {
@@ -50,9 +54,9 @@ class MealWidget : GlanceAppWidget() {
         }
     }
 
-    private suspend fun loadWidgetData(context: Context): WidgetData = withContext(Dispatchers.IO) {
+    private suspend fun loadWidgetData(context: Context, appWidgetId: Int): WidgetData = withContext(Dispatchers.IO) {
         val container = AppContainer.getInstance(context)
-        val config = WidgetConfig(context)
+        val config = WidgetConfig(context, appWidgetId)
         
         val meal = runCatching {
             val dateStr = getTargetDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
