@@ -22,11 +22,15 @@ class AppPreferences(private val context: Context) {
     private val LAST_CHECKED_INDEX = intPreferencesKey("last_checked_index")
     private val LAST_CHECKED_TIMESTAMP = longPreferencesKey("last_checked_timestamp")
     private val KEYWORD_LIST = stringPreferencesKey("highlight_keywords")
+    private val MEAL_SOURCE = stringPreferencesKey("meal_source")
+    private val EXTERNAL_API_ENDPOINT = stringPreferencesKey("external_api_endpoint")
 
     companion object {
         val DEFAULT_KEYWORDS = setOf(
             "소시지", "소세지", "닭", "삼겹살", "불고기", "돈가스", "갈비", "돼지", "소고기", "고기"
         )
+        const val SOURCE_LOCAL = "local"
+        const val SOURCE_EXTERNAL = "external"
     }
 
     val apiKey: Flow<String?> = context.dataStore.data
@@ -56,9 +60,21 @@ class AppPreferences(private val context: Context) {
             }
         }
 
+    val mealSource: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[MEAL_SOURCE] ?: SOURCE_LOCAL }
+
+    val externalApiEndpoint: Flow<String?> = context.dataStore.data
+        .map { preferences -> preferences[EXTERNAL_API_ENDPOINT] }
+
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences ->
             preferences[API_KEY] = key
+        }
+    }
+
+    suspend fun clearApiKey() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(API_KEY)
         }
     }
 
@@ -66,6 +82,24 @@ class AppPreferences(private val context: Context) {
         context.dataStore.edit { preferences ->
             preferences[LAST_CHECKED_INDEX] = index
             preferences[LAST_CHECKED_TIMESTAMP] = timestamp
+        }
+    }
+
+    suspend fun setMealSource(source: String) {
+        context.dataStore.edit { preferences ->
+            preferences[MEAL_SOURCE] = source
+        }
+    }
+
+    suspend fun setExternalApiEndpoint(endpoint: String) {
+        context.dataStore.edit { preferences ->
+            preferences[EXTERNAL_API_ENDPOINT] = endpoint
+        }
+    }
+
+    suspend fun clearExternalApiEndpoint() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(EXTERNAL_API_ENDPOINT)
         }
     }
 

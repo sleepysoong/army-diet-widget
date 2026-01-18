@@ -63,6 +63,8 @@ class MealWidget : GlanceAppWidget() {
             container.mealDao.getMeal(dateStr)
         }.getOrNull()
         
+        val canShowCalories = config.showCalories.first() && !meal?.sumCal.isNullOrBlank()
+
         WidgetData(
             meal = meal,
             displayDate = getTargetDate().format(DateTimeFormatter.ofPattern("M월 d일")),
@@ -70,7 +72,7 @@ class MealWidget : GlanceAppWidget() {
             fontScale = config.fontScale.first(),
             tagScale = config.tagScale.first(),
             headerScale = config.headerScale.first(),
-            showCalories = config.showCalories.first(),
+            showCalories = canShowCalories,
             keywords = container.preferences.highlightKeywords.first()
         )
     }

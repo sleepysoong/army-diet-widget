@@ -28,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
+import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
 import com.sleepysoong.armydiet.ui.CalendarScreen
@@ -101,20 +102,26 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     var currentTab by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
+    val mealSource by container.preferences.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
     val context = LocalContext.current
-    
+
     // 캘린더용 상태
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     var allMeals by remember { mutableStateOf<Map<String, MealEntity>>(emptyMap()) }
     var selectedMeal by remember { mutableStateOf<MealEntity?>(null) }
-    
+
     // 식단 데이터 로드
-    LaunchedEffect(Unit) {
-        container.mealDao.getAllMealsFlow().collect {
-            allMeals = it.associateBy { meal -> meal.date }
+    LaunchedEffect(mealSource) {
+        if (mealSource != AppPreferences.SOURCE_EXTERNAL) {
+            container.mealDao.getAllMealsFlow().collect {
+                allMeals = it.associateBy { meal -> meal.date }
+            }
+        } else {
+            allMeals = emptyMap()
+            selectedMeal = null
         }
     }
-    
+
     // 선택된 날짜의 식단 업데이트
     LaunchedEffect(selectedDate, allMeals) {
         val dateStr = selectedDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
@@ -164,26 +171,35 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
                     label = { Text("캘린더") },
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
+                    enabled = mealSource != AppPreferences.SOURCE_EXTERNAL,
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = ArmyColors.Primary,
                         selectedTextColor = ArmyColors.Primary,
-                        indicatorColor = ArmyColors.PrimaryContainer
+                        indicatorColor = ArmyColors.PrimaryContainer,
+                        disabledIconColor = ArmyColors.OnSurfaceVariant.copy(alpha = 0.4f),
+                        disabledTextColor = ArmyColors.OnSurfaceVariant.copy(alpha = 0.4f)
                     )
                 )
             }
-        }
+        },
     ) { padding ->
         Box(modifier = Modifier.padding(padding)) {
             when (currentTab) {
                 0 -> TodayScreen(uiState, viewModel, keywords)
-                1 -> CalendarScreen(
-                    selectedDate = selectedDate,
-                    onDateSelected = { selectedDate = it },
-                    mealData = allMeals,
-                    selectedMeal = selectedMeal,
-                    keywords = keywords,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                1 -> if (mealSource == AppPreferences.SOURCE_EXTERNAL) {
+                    EmptyState(
+                        message = "외부 API 모드에서는\n캘린더 보기를 지원하지 않습니다."
+                    )
+                } else {
+                    CalendarScreen(
+                        selectedDate = selectedDate,
+                        onDateSelected = { selectedDate = it },
+                        mealData = allMeals,
+                        selectedMeal = selectedMeal,
+                        keywords = keywords,
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
             }
         }
     }
@@ -193,12 +209,18 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
 fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<String>) {
     val configuration = LocalConfiguration.current
     val isWideScreen = configuration.screenWidthDp.dp > 600.dp
-    
+
     Box(modifier = Modifier.fillMaxSize()) {
         when (uiState) {
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
+            is MealUiState.ExternalEndpointMissing -> ExternalEndpointInputScreen(viewModel::saveExternalEndpoint)
             is MealUiState.Loading -> LoadingState()
-            is MealUiState.Error -> ErrorState(uiState.message, viewModel::loadMeal, viewModel::resetApiKey)
+            is MealUiState.Error -> ErrorState(
+                message = uiState.message,
+                onRetry = viewModel::loadMeal,
+                onReset = { viewModel.resetForError(uiState.isExternalSource) },
+                resetLabel = if (uiState.isExternalSource) "외부 API 재설정" else "API Key 재설정"
+            )
             is MealUiState.Success -> MealContent(uiState, viewModel, keywords, isWideScreen)
         }
     }
@@ -230,7 +252,7 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         OutlinedTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
@@ -263,6 +285,65 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
     }
 }
 
+@Composable
+fun ExternalEndpointInputScreen(onEndpointEntered: (String) -> Unit) {
+    var endpoint by remember { mutableStateOf("") }
+    val focusManager = LocalFocusManager.current
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "외부 API 주소 필요",
+            style = MaterialTheme.typography.headlineMedium,
+            color = ArmyColors.Primary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "설정에서 외부 API를 선택한 경우\nAPI 서버 주소를 입력해야 합니다.",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        OutlinedTextField(
+            value = endpoint,
+            onValueChange = { endpoint = it },
+            label = { Text("API Endpoint") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(onDone = {
+                if (endpoint.isNotBlank()) {
+                    onEndpointEntered(endpoint.trim())
+                    focusManager.clearFocus()
+                }
+            })
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Button(
+            onClick = {
+                if (endpoint.isNotBlank()) {
+                    onEndpointEntered(endpoint.trim())
+                    focusManager.clearFocus()
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = endpoint.isNotBlank(),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Text("시작하기")
+        }
+    }
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun MealContent(
@@ -285,9 +366,10 @@ fun MealContent(
             color = ArmyColors.Primary
         )
         
-        formatCalories(state.meal?.sumCal)?.let { cal ->
+        val calories = formatCalories(state.meal?.sumCal)
+        if (calories != null) {
             Text(
-                text = "총 칼로리: $cal",
+                text = "총 칼로리: $calories",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

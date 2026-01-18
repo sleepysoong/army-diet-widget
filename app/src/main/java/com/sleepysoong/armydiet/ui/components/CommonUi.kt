@@ -43,6 +43,7 @@ fun ErrorState(
     message: String,
     onRetry: () -> Unit,
     onReset: () -> Unit,
+    resetLabel: String = "설정 초기화",
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -80,7 +81,7 @@ fun ErrorState(
         }
         Spacer(modifier = Modifier.height(8.dp))
         TextButton(onClick = onReset) {
-            Text("API Key 재설정")
+            Text(resetLabel)
         }
     }
 }

@@ -331,10 +331,11 @@ private fun MealDetailView(
                 MealCard("점심", cleanAllergyInfo(meal.lunch), keywords)
                 MealCard("저녁", cleanAllergyInfo(meal.dinner), keywords)
                 
-                formatCalories(meal.sumCal)?.let { cal ->
+                val calories = formatCalories(meal.sumCal)
+                if (calories != null) {
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "총 칼로리: $cal",
+                        text = "총 칼로리: $calories",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.End)

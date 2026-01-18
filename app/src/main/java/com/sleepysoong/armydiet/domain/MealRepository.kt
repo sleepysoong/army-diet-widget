@@ -3,6 +3,7 @@ package com.sleepysoong.armydiet.domain
 import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealDao
 import com.sleepysoong.armydiet.data.local.MealEntity
+import com.sleepysoong.armydiet.data.remote.ExternalMealApi
 import com.sleepysoong.armydiet.data.remote.MndApi
 import com.sleepysoong.armydiet.data.remote.MndRow
 import kotlinx.coroutines.Dispatchers
@@ -16,7 +17,8 @@ import java.util.Locale
 class MealRepository(
     private val mealDao: MealDao,
     private val api: MndApi,
-    private val preferences: AppPreferences
+    private val preferences: AppPreferences,
+    private val externalApiFactory: (String) -> ExternalMealApi
 ) {
     companion object {
         private const val SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000L
@@ -32,14 +34,20 @@ class MealRepository(
     
     suspend fun getMeal(date: String): Result<MealEntity?> = withContext(Dispatchers.IO) {
         runCatching {
-            checkAndSyncIfNeeded()
-            mealDao.getMeal(date)?.cleaned()
+            when (preferences.mealSource.first()) {
+                AppPreferences.SOURCE_EXTERNAL -> fetchExternalMeal(date)
+                else -> {
+                    checkAndSyncIfNeeded()
+                    mealDao.getMeal(date)?.cleaned()
+                }
+            }
         }
     }
     
-    suspend fun syncIfNeeded(apiKey: String, forceReset: Boolean = false): Result<Unit> = 
+    suspend fun syncIfNeeded(apiKey: String, forceReset: Boolean = false): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
+                if (preferences.mealSource.first() == AppPreferences.SOURCE_EXTERNAL) return@runCatching
                 syncMutex.withLock {
                     performSync(apiKey, forceReset)
                 }
@@ -47,9 +55,10 @@ class MealRepository(
         }
     
     private suspend fun checkAndSyncIfNeeded() {
+        if (preferences.mealSource.first() == AppPreferences.SOURCE_EXTERNAL) return
         val lastSync = preferences.lastCheckedTimestamp.first()
         val now = System.currentTimeMillis()
-        
+
         if (now - lastSync > SYNC_INTERVAL_MS) {
             val apiKey = preferences.apiKey.first()
             if (!apiKey.isNullOrBlank() && syncMutex.tryLock()) {
@@ -137,10 +146,34 @@ class MealRepository(
         dinner = cleanText(dinner),
         adspcfd = cleanText(adspcfd)
     )
-    
+
     private fun cleanText(text: String): String {
         if (text.isBlank()) return "메뉴 정보 없음"
         return ALLERGY_REGEX.replace(text, "").trim()
+    }
+
+    private fun cleanExternalText(text: String): String {
+        if (text.isBlank()) return ""
+        return ALLERGY_REGEX.replace(text, "").trim()
+    }
+
+    private suspend fun fetchExternalMeal(date: String): MealEntity? {
+        val endpoint = preferences.externalApiEndpoint.first()?.trim().orEmpty()
+        require(endpoint.isNotBlank()) { "외부 API 엔드포인트가 필요합니다." }
+        val api = externalApiFactory(endpoint)
+        val response = api.getMenu(date)
+        if (!response.success) {
+            throw IllegalStateException(response.error ?: "외부 API 오류")
+        }
+        val data = response.data ?: return null
+        return MealEntity(
+            date = data.date,
+            breakfast = cleanExternalText(data.breakfast?.joinToString(", ").orEmpty()),
+            lunch = cleanExternalText(data.lunch?.joinToString(", ").orEmpty()),
+            dinner = cleanExternalText(data.dinner?.joinToString(", ").orEmpty()),
+            adspcfd = "",
+            sumCal = data.total_calories.orEmpty()
+        )
     }
 }
 

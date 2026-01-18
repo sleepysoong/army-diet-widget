@@ -15,6 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.di.AppContainer
 import com.sleepysoong.armydiet.ui.theme.AppTheme
 import com.sleepysoong.armydiet.ui.theme.ArmyColors
@@ -50,8 +51,15 @@ fun SettingsScreen(
     onBack: () -> Unit
 ) {
     val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
+    val mealSource by container.preferences.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
+    val endpoint by container.preferences.externalApiEndpoint.collectAsStateWithLifecycle(initialValue = "")
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    var endpointInput by remember { mutableStateOf("") }
+
+    LaunchedEffect(endpoint) {
+        endpointInput = endpoint ?: ""
+    }
 
     Scaffold(
         topBar = {
@@ -86,6 +94,81 @@ fun SettingsScreen(
                 .padding(24.dp)
         ) {
             Text(
+                text = "식단 데이터 소스",
+                style = MaterialTheme.typography.titleMedium,
+                color = ArmyColors.Primary,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "식단 데이터를 로컬 저장소에서 읽을지, 외부 API에서 가져올지 선택합니다.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            SourceOptionRow(
+                title = "로컬",
+                description = "기존 방식대로 로컬 DB에서 식단을 불러옵니다.",
+                selected = mealSource == AppPreferences.SOURCE_LOCAL,
+                onSelect = {
+                    scope.launch {
+                        container.preferences.setMealSource(AppPreferences.SOURCE_LOCAL)
+                        MealWidgetReceiver.updateAllWidgets(context)
+                    }
+                }
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            SourceOptionRow(
+                title = "외부 API",
+                description = "설정한 API 서버에서 오늘 식단만 가져옵니다.",
+                selected = mealSource == AppPreferences.SOURCE_EXTERNAL,
+                onSelect = {
+                    scope.launch {
+                        container.preferences.setMealSource(AppPreferences.SOURCE_EXTERNAL)
+                        MealWidgetReceiver.updateAllWidgets(context)
+                    }
+                }
+            )
+
+            if (mealSource == AppPreferences.SOURCE_EXTERNAL) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = endpointInput,
+                    onValueChange = { endpointInput = it },
+                    label = { Text("API Endpoint") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    supportingText = {
+                        Text("예: https://example.com")
+                    }
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            container.preferences.setExternalApiEndpoint(endpointInput.trim())
+                            MealWidgetReceiver.updateAllWidgets(context)
+                        }
+                    },
+                    enabled = endpointInput.isNotBlank(),
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("엔드포인트 저장")
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
                 text = "강조할 키워드 관리",
                 style = MaterialTheme.typography.titleMedium,
                 color = ArmyColors.Primary,
@@ -97,7 +180,7 @@ fun SettingsScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-            
+
             Spacer(modifier = Modifier.height(32.dp))
             
             KeywordInput(
@@ -124,11 +207,18 @@ fun SettingsScreen(
             Spacer(modifier = Modifier.weight(1f))
             
             ResetApiKeySection(
-                onReset = {
+                onResetApiKey = {
                     scope.launch {
-                        container.preferences.saveApiKey("")
+                        container.preferences.clearApiKey()
                         MealWidgetReceiver.updateAllWidgets(context)
-                        onBack() 
+                        onBack()
+                    }
+                },
+                onResetEndpoint = {
+                    scope.launch {
+                        container.preferences.clearExternalApiEndpoint()
+                        MealWidgetReceiver.updateAllWidgets(context)
+                        onBack()
                     }
                 }
             )
@@ -137,7 +227,10 @@ fun SettingsScreen(
 }
 
 @Composable
-fun ResetApiKeySection(onReset: () -> Unit) {
+fun ResetApiKeySection(
+    onResetApiKey: () -> Unit,
+    onResetEndpoint: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -166,13 +259,13 @@ fun ResetApiKeySection(onReset: () -> Unit) {
             }
             Spacer(modifier = Modifier.height(12.dp))
             Text(
-                text = "저장된 API Key를 삭제하고 초기 화면으로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.",
+                text = "저장된 API Key/외부 엔드포인트를 삭제하고 초기 화면으로 돌아갑니다. 이 작업은 되돌릴 수 없습니다.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = ArmyColors.Error.copy(alpha = 0.9f)
             )
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = onReset,
+                onClick = onResetApiKey,
                 modifier = Modifier.fillMaxWidth(),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = ArmyColors.Error,
@@ -181,6 +274,65 @@ fun ResetApiKeySection(onReset: () -> Unit) {
                 shape = MaterialTheme.shapes.medium
             ) {
                 Text("API Key 초기화", fontWeight = FontWeight.Bold)
+            }
+            Spacer(modifier = Modifier.height(8.dp))
+            OutlinedButton(
+                onClick = onResetEndpoint,
+                modifier = Modifier.fillMaxWidth(),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ArmyColors.Error),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    contentColor = ArmyColors.Error
+                ),
+                shape = MaterialTheme.shapes.medium
+            ) {
+                Text("외부 API 초기화", fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+}
+
+@Composable
+fun SourceOptionRow(
+    title: String,
+    description: String,
+    selected: Boolean,
+    onSelect: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = if (selected) ArmyColors.PrimaryContainer else ArmyColors.Surface
+        ),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
+        shape = MaterialTheme.shapes.medium
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = selected,
+                onClick = onSelect,
+                colors = RadioButtonDefaults.colors(
+                    selectedColor = ArmyColors.Primary
+                )
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = ArmyColors.Primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

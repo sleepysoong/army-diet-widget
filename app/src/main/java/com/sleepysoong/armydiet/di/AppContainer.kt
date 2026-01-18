@@ -38,7 +38,9 @@ class AppContainer private constructor(context: Context) {
     
     // Repository
     val mealRepository: MealRepository by lazy {
-        MealRepository(mealDao, api, preferences)
+        MealRepository(mealDao, api, preferences) { baseUrl ->
+            NetworkModule.createExternalApi(baseUrl)
+        }
     }
     
     companion object {

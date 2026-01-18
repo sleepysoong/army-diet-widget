@@ -20,8 +20,9 @@ import java.time.format.DateTimeFormatter
 sealed interface MealUiState {
     data object Loading : MealUiState
     data object ApiKeyMissing : MealUiState
+    data object ExternalEndpointMissing : MealUiState
     data class Success(val meal: MealEntity?, val targetDate: String) : MealUiState
-    data class Error(val message: String) : MealUiState
+    data class Error(val message: String, val isExternalSource: Boolean = false) : MealUiState
 }
 
 class MainViewModel(
@@ -40,15 +41,7 @@ class MainViewModel(
     }
 
     private fun initialize() {
-        viewModelScope.launch {
-            val key = preferences.apiKey.first()
-            if (key.isNullOrBlank()) {
-                _uiState.value = MealUiState.ApiKeyMissing
-            } else {
-                cachedApiKey = key
-                loadMeal()
-            }
-        }
+        loadMeal()
     }
 
     fun saveApiKey(key: String) {
@@ -60,29 +53,54 @@ class MainViewModel(
         }
     }
 
-    fun loadMeal() {
-        val key = cachedApiKey
-        if (key.isNullOrBlank()) {
-            _uiState.value = MealUiState.ApiKeyMissing
-            return
-        }
-
+    fun saveExternalEndpoint(endpoint: String) {
         viewModelScope.launch {
+            preferences.setExternalApiEndpoint(endpoint)
+            loadMeal()
+        }
+    }
+
+    fun loadMeal() {
+        viewModelScope.launch {
+            val source = preferences.mealSource.first()
+            if (source == AppPreferences.SOURCE_EXTERNAL) {
+                val endpoint = preferences.externalApiEndpoint.first()
+                if (endpoint.isNullOrBlank()) {
+                    _uiState.value = MealUiState.ExternalEndpointMissing
+                    return@launch
+                }
+            } else {
+                val key = cachedApiKey ?: preferences.apiKey.first()
+                if (key.isNullOrBlank()) {
+                    _uiState.value = MealUiState.ApiKeyMissing
+                    return@launch
+                }
+                cachedApiKey = key
+            }
+
             _uiState.value = MealUiState.Loading
-            
+
             val (dateStr, displayDate) = getTargetDateInfo()
-            
+
             repository.getMeal(dateStr)
                 .onSuccess { meal ->
                     if (meal != null) {
                         _uiState.value = MealUiState.Success(meal, displayDate)
                         updateWidget()
                     } else {
-                        syncAndRetry(key, dateStr, displayDate)
+                        val key = cachedApiKey
+                        if (!key.isNullOrBlank() && source != AppPreferences.SOURCE_EXTERNAL) {
+                            syncAndRetry(key, dateStr, displayDate)
+                        } else {
+                            _uiState.value = MealUiState.Success(null, displayDate)
+                        }
                     }
                 }
                 .onFailure { e ->
-                    _uiState.value = MealUiState.Error("데이터 로드 실패: ${e.localizedMessage}")
+                    _uiState.value = MealUiState.Error(
+                        "데이터 로드 실패: ${e.localizedMessage}",
+                        source == AppPreferences.SOURCE_EXTERNAL
+                    )
                 }
         }
     }
@@ -120,10 +138,25 @@ class MainViewModel(
 
     fun resetApiKey() {
         viewModelScope.launch {
-            preferences.saveApiKey("")
+            preferences.clearApiKey()
             preferences.updateSyncStatus(0, 0)
             cachedApiKey = null
             _uiState.value = MealUiState.ApiKeyMissing
+        }
+    }
+
+    fun resetExternalEndpoint() {
+        viewModelScope.launch {
+            preferences.clearExternalApiEndpoint()
+            _uiState.value = MealUiState.ExternalEndpointMissing
+        }
+    }
+
+    fun resetForError(isExternalSource: Boolean) {
+        if (isExternalSource) {
+            resetExternalEndpoint()
+        } else {
+            resetApiKey()
         }
     }
 }
