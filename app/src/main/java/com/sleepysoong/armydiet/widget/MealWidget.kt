@@ -58,9 +58,11 @@ class MealWidget : GlanceAppWidget() {
         val container = AppContainer.getInstance(context)
         val config = WidgetConfig(context, appWidgetId)
         
+        val dateStr = getTargetDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+        
+        // Repository를 통해 소스(로컬/외부)에 맞게 데이터 가져오기
         val meal = runCatching {
-            val dateStr = getTargetDate().format(DateTimeFormatter.ofPattern("yyyyMMdd"))
-            container.mealDao.getMeal(dateStr)
+            container.mealRepository.getMeal(dateStr).getOrNull()
         }.getOrNull()
         
         val canShowCalories = config.showCalories.first() && !meal?.sumCal.isNullOrBlank()

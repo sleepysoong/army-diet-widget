@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter
 
 sealed interface MealUiState {
     data object Loading : MealUiState
+    data object SourceSelection : MealUiState  // 첫 실행시 소스 선택
     data object ApiKeyMissing : MealUiState
     data object ExternalEndpointMissing : MealUiState
     data class Success(val meal: MealEntity?, val targetDate: String) : MealUiState
@@ -56,26 +57,46 @@ class MainViewModel(
     fun saveExternalEndpoint(endpoint: String) {
         viewModelScope.launch {
             preferences.setExternalApiEndpoint(endpoint)
+            preferences.setMealSource(AppPreferences.SOURCE_EXTERNAL)
             loadMeal()
+        }
+    }
+
+    fun selectSource(source: String) {
+        viewModelScope.launch {
+            preferences.setMealSource(source)
+            if (source == AppPreferences.SOURCE_EXTERNAL) {
+                _uiState.value = MealUiState.ExternalEndpointMissing
+            } else {
+                _uiState.value = MealUiState.ApiKeyMissing
+            }
         }
     }
 
     fun loadMeal() {
         viewModelScope.launch {
             val source = preferences.mealSource.first()
+            val apiKey = preferences.apiKey.first()
+            val endpoint = preferences.externalApiEndpoint.first()
+            
+            // 첫 실행: 둘 다 없으면 소스 선택 화면
+            if (apiKey.isNullOrBlank() && endpoint.isNullOrBlank()) {
+                _uiState.value = MealUiState.SourceSelection
+                return@launch
+            }
+            
+            // 소스별 필수값 체크
             if (source == AppPreferences.SOURCE_EXTERNAL) {
-                val endpoint = preferences.externalApiEndpoint.first()
                 if (endpoint.isNullOrBlank()) {
                     _uiState.value = MealUiState.ExternalEndpointMissing
                     return@launch
                 }
             } else {
-                val key = cachedApiKey ?: preferences.apiKey.first()
-                if (key.isNullOrBlank()) {
+                if (apiKey.isNullOrBlank()) {
                     _uiState.value = MealUiState.ApiKeyMissing
                     return@launch
                 }
-                cachedApiKey = key
+                cachedApiKey = apiKey
             }
 
             _uiState.value = MealUiState.Loading

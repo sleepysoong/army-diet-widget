@@ -212,6 +212,7 @@ fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<St
 
     Box(modifier = Modifier.fillMaxSize()) {
         when (uiState) {
+            is MealUiState.SourceSelection -> SourceSelectionScreen(viewModel::selectSource)
             is MealUiState.ApiKeyMissing -> ApiKeyInputScreen(viewModel::saveApiKey)
             is MealUiState.ExternalEndpointMissing -> ExternalEndpointInputScreen(viewModel::saveExternalEndpoint)
             is MealUiState.Loading -> LoadingState()
@@ -222,6 +223,80 @@ fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<St
                 resetLabel = if (uiState.isExternalSource) "외부 API 재설정" else "API Key 재설정"
             )
             is MealUiState.Success -> MealContent(uiState, viewModel, keywords, isWideScreen)
+        }
+    }
+}
+
+@Composable
+fun SourceSelectionScreen(onSourceSelected: (String) -> Unit) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Text(
+            text = "식단 데이터 소스 선택",
+            style = MaterialTheme.typography.headlineMedium,
+            color = ArmyColors.Primary,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "어디서 식단 정보를 가져올까요?",
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // 국방부 API 선택
+        OutlinedButton(
+            onClick = { onSourceSelected(AppPreferences.SOURCE_LOCAL) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "국방부 공공데이터 API",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "공공데이터포털에서 발급받은 API Key 필요",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 외부 API 선택
+        OutlinedButton(
+            onClick = { onSourceSelected(AppPreferences.SOURCE_EXTERNAL) },
+            modifier = Modifier.fillMaxWidth(),
+            shape = MaterialTheme.shapes.medium
+        ) {
+            Column(
+                modifier = Modifier.padding(vertical = 8.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = "외부 API 서버",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "직접 구축한 API 서버 주소 입력",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
