@@ -110,15 +110,10 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     var allMeals by remember { mutableStateOf<Map<String, MealEntity>>(emptyMap()) }
     var selectedMeal by remember { mutableStateOf<MealEntity?>(null) }
 
-    // 식단 데이터 로드
-    LaunchedEffect(mealSource) {
-        if (mealSource != AppPreferences.SOURCE_EXTERNAL) {
-            container.mealDao.getAllMealsFlow().collect {
-                allMeals = it.associateBy { meal -> meal.date }
-            }
-        } else {
-            allMeals = emptyMap()
-            selectedMeal = null
+    // 식단 데이터 로드 (소스 상관없이 항상 로컬 DB에서)
+    LaunchedEffect(Unit) {
+        container.mealDao.getAllMealsFlow().collect {
+            allMeals = it.associateBy { meal -> meal.date }
         }
     }
 
@@ -133,7 +128,7 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
             TopAppBar(
                 title = {
                     Text(
-                        text = "군대 식단",
+                        text = "🍚 군대 식단",
                         fontWeight = FontWeight.Bold,
                         color = ArmyColors.Primary
                     )
@@ -171,13 +166,10 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
                     label = { Text("캘린더") },
                     selected = currentTab == 1,
                     onClick = { currentTab = 1 },
-                    enabled = mealSource != AppPreferences.SOURCE_EXTERNAL,
                     colors = NavigationBarItemDefaults.colors(
                         selectedIconColor = ArmyColors.Primary,
                         selectedTextColor = ArmyColors.Primary,
-                        indicatorColor = ArmyColors.PrimaryContainer,
-                        disabledIconColor = ArmyColors.OnSurfaceVariant.copy(alpha = 0.4f),
-                        disabledTextColor = ArmyColors.OnSurfaceVariant.copy(alpha = 0.4f)
+                        indicatorColor = ArmyColors.PrimaryContainer
                     )
                 )
             }
@@ -186,20 +178,15 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
         Box(modifier = Modifier.padding(padding)) {
             when (currentTab) {
                 0 -> TodayScreen(uiState, viewModel, keywords)
-                1 -> if (mealSource == AppPreferences.SOURCE_EXTERNAL) {
-                    EmptyState(
-                        message = "외부 API 모드에서는\n캘린더 보기를 지원하지 않습니다."
-                    )
-                } else {
-                    CalendarScreen(
-                        selectedDate = selectedDate,
-                        onDateSelected = { selectedDate = it },
-                        mealData = allMeals,
-                        selectedMeal = selectedMeal,
-                        keywords = keywords,
-                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                    )
-                }
+                1 -> CalendarScreen(
+                    selectedDate = selectedDate,
+                    onDateSelected = { selectedDate = it },
+                    mealData = allMeals,
+                    selectedMeal = selectedMeal,
+                    keywords = keywords,
+                    onMealEdit = { meal -> container.mealDao.insertMeals(listOf(meal)) },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
             }
         }
     }

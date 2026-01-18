@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.KeyboardArrowRight
 import androidx.compose.material3.*
@@ -28,6 +29,9 @@ import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.ui.components.EmptyState
 import com.sleepysoong.armydiet.ui.components.MealCard
 import com.sleepysoong.armydiet.ui.theme.ArmyColors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
@@ -42,6 +46,7 @@ fun CalendarScreen(
     mealData: Map<String, MealEntity>,
     selectedMeal: MealEntity?,
     keywords: Set<String> = emptySet(),
+    onMealEdit: suspend (MealEntity) -> Unit = {},
     modifier: Modifier = Modifier
 )
 {
@@ -72,6 +77,7 @@ fun CalendarScreen(
                 selectedDate = selectedDate,
                 selectedMeal = selectedMeal,
                 keywords = keywords,
+                onMealEdit = onMealEdit,
                 modifier = Modifier.weight(1f).fillMaxHeight()
             )
         }
@@ -91,6 +97,7 @@ fun CalendarScreen(
                 selectedDate = selectedDate,
                 selectedMeal = selectedMeal,
                 keywords = keywords,
+                onMealEdit = onMealEdit,
                 modifier = Modifier.weight(0.55f).fillMaxHeight()
             )
         }
@@ -129,12 +136,14 @@ private fun MealDetailSection(
     selectedDate: LocalDate,
     selectedMeal: MealEntity?,
     keywords: Set<String>,
+    onMealEdit: suspend (MealEntity) -> Unit,
     modifier: Modifier
 ) {
     MealDetailView(
         date = selectedDate,
         meal = selectedMeal,
         keywords = keywords,
+        onMealEdit = onMealEdit,
         modifier = modifier
     )
 }
@@ -296,10 +305,14 @@ private fun MealDetailView(
     date: LocalDate,
     meal: MealEntity?,
     keywords: Set<String>,
+    onMealEdit: suspend (MealEntity) -> Unit,
     modifier: Modifier = Modifier
 )
 {
     val displayDate = date.format(DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN))
+    val dateStr = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
+    var showEditDialog by remember { mutableStateOf(false) }
+    val coroutineScope = rememberCoroutineScope()
     
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -315,12 +328,25 @@ private fun MealDetailView(
                 .padding(20.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            Text(
-                text = displayDate,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = ArmyColors.Primary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = displayDate,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = ArmyColors.Primary
+                )
+                IconButton(onClick = { showEditDialog = true }) {
+                    Icon(
+                        Icons.Default.Edit,
+                        contentDescription = "수정",
+                        tint = ArmyColors.Primary
+                    )
+                }
+            }
             
             Spacer(modifier = Modifier.height(16.dp))
             
@@ -344,6 +370,94 @@ private fun MealDetailView(
             }
         }
     }
+    
+    if (showEditDialog) {
+        MealEditDialog(
+            date = dateStr,
+            meal = meal,
+            onDismiss = { showEditDialog = false },
+            onSave = { editedMeal ->
+                coroutineScope.launch(Dispatchers.IO) {
+                    onMealEdit(editedMeal)
+                }
+                showEditDialog = false
+            }
+        )
+    }
+}
+
+@Composable
+private fun MealEditDialog(
+    date: String,
+    meal: MealEntity?,
+    onDismiss: () -> Unit,
+    onSave: (MealEntity) -> Unit
+) {
+    var breakfast by remember { mutableStateOf(meal?.breakfast ?: "") }
+    var lunch by remember { mutableStateOf(meal?.lunch ?: "") }
+    var dinner by remember { mutableStateOf(meal?.dinner ?: "") }
+    var calories by remember { mutableStateOf(meal?.sumCal ?: "") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("식단 수정") },
+        text = {
+            Column(
+                modifier = Modifier.verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                OutlinedTextField(
+                    value = breakfast,
+                    onValueChange = { breakfast = it },
+                    label = { Text("아침") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+                OutlinedTextField(
+                    value = lunch,
+                    onValueChange = { lunch = it },
+                    label = { Text("점심") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+                OutlinedTextField(
+                    value = dinner,
+                    onValueChange = { dinner = it },
+                    label = { Text("저녁") },
+                    modifier = Modifier.fillMaxWidth(),
+                    minLines = 2
+                )
+                OutlinedTextField(
+                    value = calories,
+                    onValueChange = { calories = it },
+                    label = { Text("칼로리 (선택)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                onSave(
+                    MealEntity(
+                        date = date,
+                        breakfast = breakfast,
+                        lunch = lunch,
+                        dinner = dinner,
+                        adspcfd = meal?.adspcfd ?: "",
+                        sumCal = calories
+                    )
+                )
+            }) {
+                Text("저장")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("취소")
+            }
+        }
+    )
 }
 
 private fun cleanAllergyInfo(text: String): String {

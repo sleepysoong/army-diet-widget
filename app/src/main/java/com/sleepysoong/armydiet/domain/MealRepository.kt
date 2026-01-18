@@ -34,36 +34,43 @@ class MealRepository(
     
     suspend fun getMeal(date: String): Result<MealEntity?> = withContext(Dispatchers.IO) {
         runCatching {
-            when (preferences.mealSource.first()) {
-                AppPreferences.SOURCE_EXTERNAL -> fetchExternalMeal(date)
-                else -> {
-                    checkAndSyncIfNeeded()
-                    mealDao.getMeal(date)?.cleaned()
-                }
-            }
+            // 항상 로컬 DB에서 조회
+            checkAndSyncIfNeeded(date)
+            mealDao.getMeal(date)?.cleaned()
         }
     }
     
     suspend fun syncIfNeeded(apiKey: String, forceReset: Boolean = false): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
-                if (preferences.mealSource.first() == AppPreferences.SOURCE_EXTERNAL) return@runCatching
                 syncMutex.withLock {
-                    performSync(apiKey, forceReset)
+                    val source = preferences.mealSource.first()
+                    if (source == AppPreferences.SOURCE_EXTERNAL) {
+                        // 외부 API: 오늘 날짜만 동기화
+                        syncExternalMeal(null)
+                    } else {
+                        performSync(apiKey, forceReset)
+                    }
                 }
             }
         }
     
-    private suspend fun checkAndSyncIfNeeded() {
-        if (preferences.mealSource.first() == AppPreferences.SOURCE_EXTERNAL) return
+    private suspend fun checkAndSyncIfNeeded(date: String? = null) {
         val lastSync = preferences.lastCheckedTimestamp.first()
         val now = System.currentTimeMillis()
 
         if (now - lastSync > SYNC_INTERVAL_MS) {
-            val apiKey = preferences.apiKey.first()
-            if (!apiKey.isNullOrBlank() && syncMutex.tryLock()) {
+            if (syncMutex.tryLock()) {
                 try {
-                    performSync(apiKey, reset = false)
+                    val source = preferences.mealSource.first()
+                    if (source == AppPreferences.SOURCE_EXTERNAL) {
+                        syncExternalMeal(date)
+                    } else {
+                        val apiKey = preferences.apiKey.first()
+                        if (!apiKey.isNullOrBlank()) {
+                            performSync(apiKey, reset = false)
+                        }
+                    }
                 } finally {
                     syncMutex.unlock()
                 }
@@ -157,23 +164,29 @@ class MealRepository(
         return ALLERGY_REGEX.replace(text, "").trim()
     }
 
-    private suspend fun fetchExternalMeal(date: String): MealEntity? {
+    private suspend fun syncExternalMeal(date: String?) {
         val endpoint = preferences.externalApiEndpoint.first()?.trim().orEmpty()
-        require(endpoint.isNotBlank()) { "외부 API 엔드포인트가 필요합니다." }
+        if (endpoint.isBlank()) return
+        
         val api = externalApiFactory(endpoint)
-        val response = api.getMenu(date)
-        if (!response.success) {
-            throw IllegalStateException(response.error ?: "외부 API 오류")
+        val targetDate = date ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))
+        
+        runCatching {
+            val response = api.getMenu(targetDate)
+            if (response.success && response.data != null) {
+                val data = response.data
+                val meal = MealEntity(
+                    date = data.date,
+                    breakfast = cleanExternalText(data.breakfast?.joinToString(", ").orEmpty()),
+                    lunch = cleanExternalText(data.lunch?.joinToString(", ").orEmpty()),
+                    dinner = cleanExternalText(data.dinner?.joinToString(", ").orEmpty()),
+                    adspcfd = "",
+                    sumCal = data.total_calories.orEmpty()
+                )
+                mealDao.insertMeals(listOf(meal))
+                preferences.updateSyncStatus(0, System.currentTimeMillis())
+            }
         }
-        val data = response.data ?: return null
-        return MealEntity(
-            date = data.date,
-            breakfast = cleanExternalText(data.breakfast?.joinToString(", ").orEmpty()),
-            lunch = cleanExternalText(data.lunch?.joinToString(", ").orEmpty()),
-            dinner = cleanExternalText(data.dinner?.joinToString(", ").orEmpty()),
-            adspcfd = "",
-            sumCal = data.total_calories.orEmpty()
-        )
     }
 }
 
