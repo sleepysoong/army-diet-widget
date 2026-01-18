@@ -2,41 +2,54 @@ package com.sleepysoong.armydiet.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Army Diet Palette
+// Apple-style Minimal Palette
 object ArmyColors {
-    // Primary Greens
-    val Primary = Color(0xFF1B5E20)       // Dark Green
-    val PrimaryLight = Color(0xFF2E7D32)
-    val PrimaryDark = Color(0xFF0D3311)
+    // Primary - Subtle Green Accent
+    val Primary = Color(0xFF34C759)        // Apple Green
+    val PrimaryLight = Color(0xFF5DD97A)
+    val PrimaryDark = Color(0xFF248A3D)
     
     // Containers
-    val PrimaryContainer = Color(0xFFE8F5E9)
-    val PrimaryContainerDark = Color(0xFF1B5E20)
+    val PrimaryContainer = Color(0xFFE8F9ED)
+    val PrimaryContainerDark = Color(0xFF1C3D26)
     
-    // Backgrounds
-    val Background = Color(0xFFF9FAFB) // Slightly cool gray/white
-    val BackgroundDark = Color(0xFF121212)
+    // Backgrounds - Clean & Minimal
+    val Background = Color(0xFFF2F2F7)     // iOS Light Gray
+    val BackgroundDark = Color(0xFF000000)  // Pure Black
     
     val Surface = Color(0xFFFFFFFF)
-    val SurfaceDark = Color(0xFF1E1E1E)
+    val SurfaceDark = Color(0xFF1C1C1E)    // iOS Dark Surface
+    
+    val SurfaceElevated = Color(0xFFFFFFFF)
+    val SurfaceElevatedDark = Color(0xFF2C2C2E)
     
     // Text
     val OnPrimary = Color.White
-    val OnBackground = Color(0xFF1F2937) // Dark gray text
-    val OnBackgroundDark = Color(0xFFE5E7EB)
+    val OnBackground = Color(0xFF000000)   // Pure Black Text
+    val OnBackgroundDark = Color(0xFFFFFFFF)
     
-    val OnSurface = Color(0xFF1F2937)
-    val OnSurfaceDark = Color(0xFFE5E7EB)
+    val OnSurface = Color(0xFF000000)
+    val OnSurfaceDark = Color(0xFFFFFFFF)
     
-    val OnSurfaceVariant = Color(0xFF6B7280) // Medium gray
-    val OnSurfaceVariantDark = Color(0xFF9CA3AF)
+    val OnSurfaceVariant = Color(0xFF8E8E93)  // iOS Gray
+    val OnSurfaceVariantDark = Color(0xFF8E8E93)
     
-    // Accents
-    val Error = Color(0xFFDC2626)
-    val Highlight = Color(0xFF1B5E20) // Highlight color for keywords
-    val HighlightDark = Color(0xFF81C784)
+    // Semantic Colors
+    val Error = Color(0xFFFF3B30)           // iOS Red
+    val Highlight = Color(0xFF34C759)
+    val HighlightDark = Color(0xFF30D158)
+    
+    // Card & Divider
+    val CardBackground = Color(0xFFFFFFFF)
+    val CardBackgroundDark = Color(0xFF1C1C1E)
+    val Divider = Color(0xFFC6C6C8)
+    val DividerDark = Color(0xFF38383A)
+    
+    // Floating Bar
+    val FloatingBar = Color(0xFFFFFFFF)
+    val FloatingBarDark = Color(0xFF1C1C1E)
     
     // Highlighter Style
-    val Highlighter = Color(0xFF1B5E20)
-    val HighlighterText = Color(0xFFF1F8E9)
+    val Highlighter = Color(0xFF34C759)
+    val HighlighterText = Color.White
 }

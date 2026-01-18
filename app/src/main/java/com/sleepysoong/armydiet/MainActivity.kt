@@ -4,17 +4,27 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.DateRange
+import androidx.compose.material.icons.rounded.Home
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -24,7 +34,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
@@ -54,7 +63,7 @@ class MainActivity : ComponentActivity() {
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        
+        enableEdgeToEdge()
         scheduleSyncWorker()
 
         setContent {
@@ -96,13 +105,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     var currentTab by remember { mutableIntStateOf(0) }
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
-    val mealSource by container.preferences.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
     val context = LocalContext.current
 
     // 캘린더용 상태
@@ -110,7 +117,7 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
     var allMeals by remember { mutableStateOf<Map<String, MealEntity>>(emptyMap()) }
     var selectedMeal by remember { mutableStateOf<MealEntity?>(null) }
 
-    // 식단 데이터 로드 (소스 상관없이 항상 로컬 DB에서)
+    // 식단 데이터 로드
     LaunchedEffect(Unit) {
         container.mealDao.getAllMealsFlow().collect {
             allMeals = it.associateBy { meal -> meal.date }
@@ -123,72 +130,163 @@ fun MainScreen(viewModel: MainViewModel, container: AppContainer) {
         selectedMeal = allMeals[dateStr]
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "🍚 군대 식단",
-                        fontWeight = FontWeight.Bold,
-                        color = ArmyColors.Primary
-                    )
-                },
-                actions = {
-                    IconButton(onClick = {
-                        context.startActivity(Intent(context, SettingsActivity::class.java))
-                    }) {
-                        Icon(Icons.Default.Settings, contentDescription = "설정", tint = ArmyColors.OnSurfaceVariant)
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = ArmyColors.Surface,
-                )
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Main Content
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+        ) {
+            // Top Header
+            AppleHeader(
+                title = "🍚 군대 식단",
+                onSettingsClick = {
+                    context.startActivity(Intent(context, SettingsActivity::class.java))
+                }
             )
-        },
-        bottomBar = {
-            NavigationBar(
-                containerColor = ArmyColors.Surface,
-                tonalElevation = 8.dp
+
+            // Content Area
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(bottom = 100.dp) // Space for floating bar
             ) {
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.Home, contentDescription = "오늘") },
-                    label = { Text("오늘") },
-                    selected = currentTab == 0,
-                    onClick = { currentTab = 0 },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = ArmyColors.Primary,
-                        selectedTextColor = ArmyColors.Primary,
-                        indicatorColor = ArmyColors.PrimaryContainer
-                    )
-                )
-                NavigationBarItem(
-                    icon = { Icon(Icons.Default.DateRange, contentDescription = "캘린더") },
-                    label = { Text("캘린더") },
-                    selected = currentTab == 1,
-                    onClick = { currentTab = 1 },
-                    colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = ArmyColors.Primary,
-                        selectedTextColor = ArmyColors.Primary,
-                        indicatorColor = ArmyColors.PrimaryContainer
-                    )
-                )
-            }
-        },
-    ) { padding ->
-        Box(modifier = Modifier.padding(padding)) {
-            when (currentTab) {
-                0 -> TodayScreen(uiState, viewModel, keywords)
-                1 -> CalendarScreen(
-                    selectedDate = selectedDate,
-                    onDateSelected = { selectedDate = it },
-                    mealData = allMeals,
-                    selectedMeal = selectedMeal,
-                    keywords = keywords,
-                    onMealEdit = { meal -> container.mealDao.insertMeals(listOf(meal)) },
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
+                AnimatedContent(
+                    targetState = currentTab,
+                    transitionSpec = {
+                        fadeIn(animationSpec = tween(200)) togetherWith
+                                fadeOut(animationSpec = tween(200))
+                    },
+                    label = "tab_content"
+                ) { tab ->
+                    when (tab) {
+                        0 -> TodayScreen(uiState, viewModel, keywords)
+                        1 -> CalendarScreen(
+                            selectedDate = selectedDate,
+                            onDateSelected = { selectedDate = it },
+                            mealData = allMeals,
+                            selectedMeal = selectedMeal,
+                            keywords = keywords,
+                            onMealEdit = { meal -> container.mealDao.insertMeals(listOf(meal)) },
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                    }
+                }
             }
         }
+
+        // Floating Navigation Bar
+        FloatingNavBar(
+            selectedIndex = currentTab,
+            onItemSelected = { currentTab = it },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 32.dp)
+                .navigationBarsPadding()
+        )
+    }
+}
+
+@Composable
+private fun AppleHeader(
+    title: String,
+    onSettingsClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.displaySmall,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        
+        IconButton(
+            onClick = onSettingsClick,
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+        ) {
+            Icon(
+                Icons.Rounded.Settings,
+                contentDescription = "설정",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun FloatingNavBar(
+    selectedIndex: Int,
+    onItemSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val items = listOf(
+        Icons.Rounded.Home to "홈",
+        Icons.Rounded.DateRange to "캘린더"
+    )
+
+    Row(
+        modifier = modifier
+            .shadow(
+                elevation = 20.dp,
+                shape = RoundedCornerShape(28.dp),
+                ambientColor = Color.Black.copy(alpha = 0.1f),
+                spotColor = Color.Black.copy(alpha = 0.1f)
+            )
+            .clip(RoundedCornerShape(28.dp))
+            .background(MaterialTheme.colorScheme.surface)
+            .padding(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        items.forEachIndexed { index, (icon, _) ->
+            FloatingNavItem(
+                icon = icon,
+                isSelected = selectedIndex == index,
+                onClick = { onItemSelected(index) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun FloatingNavItem(
+    icon: ImageVector,
+    isSelected: Boolean,
+    onClick: () -> Unit
+) {
+    val backgroundColor by animateColorAsState(
+        targetValue = if (isSelected) ArmyColors.Primary else Color.Transparent,
+        animationSpec = tween(200),
+        label = "nav_bg"
+    )
+    val iconColor by animateColorAsState(
+        targetValue = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
+        animationSpec = tween(200),
+        label = "nav_icon"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(56.dp)
+            .clip(RoundedCornerShape(20.dp))
+            .background(backgroundColor)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconColor,
+            modifier = Modifier.size(26.dp)
+        )
     }
 }
 
@@ -218,72 +316,80 @@ fun TodayScreen(uiState: MealUiState, viewModel: MainViewModel, keywords: Set<St
 fun SourceSelectionScreen(onSourceSelected: (String) -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "식단 데이터 소스 선택",
-            style = MaterialTheme.typography.headlineMedium,
-            color = ArmyColors.Primary,
+            text = "시작하기",
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "어디서 식단 정보를 가져올까요?",
-            textAlign = TextAlign.Center,
+            text = "식단 데이터를 어디서 가져올까요?",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         // 국방부 API 선택
-        OutlinedButton(
-            onClick = { onSourceSelected(AppPreferences.SOURCE_LOCAL) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
-        ) {
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = "국방부 공공데이터 API",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "공공데이터포털에서 발급받은 API Key 필요",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-        }
+        AppleOptionCard(
+            title = "국방부 공공데이터",
+            subtitle = "API Key 필요",
+            onClick = { onSourceSelected(AppPreferences.SOURCE_LOCAL) }
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         // 외부 API 선택
-        OutlinedButton(
-            onClick = { onSourceSelected(AppPreferences.SOURCE_EXTERNAL) },
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium
+        AppleOptionCard(
+            title = "외부 API 서버",
+            subtitle = "직접 구축한 서버 사용",
+            onClick = { onSourceSelected(AppPreferences.SOURCE_EXTERNAL) }
+        )
+    }
+}
+
+@Composable
+private fun AppleOptionCard(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(onClick = onClick),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 0.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(20.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier.padding(vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
+            Column {
                 Text(
-                    text = "외부 API 서버",
+                    text = title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "직접 구축한 API 서버 주소 입력",
+                    text = subtitle,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
+            Text(
+                text = "→",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -295,33 +401,36 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "API Key 필요",
-            style = MaterialTheme.typography.headlineMedium,
-            color = ArmyColors.Primary,
+            text = "API Key 입력",
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "국방부 공공데이터 포털에서 발급받은\nAPI Key를 입력해주세요.",
+            text = "공공데이터포털에서 발급받은\nAPI Key를 입력해주세요",
             textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
             value = apiKey,
             onValueChange = { apiKey = it },
-            label = { Text("API Key") },
+            placeholder = { Text("API Key") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedBorderColor = ArmyColors.Primary
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
                 if (apiKey.isNotBlank()) {
@@ -330,7 +439,8 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
                 }
             })
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Button(
             onClick = {
                 if (apiKey.isNotBlank()) {
@@ -338,11 +448,20 @@ fun ApiKeyInputScreen(onKeyEntered: (String) -> Unit) {
                     focusManager.clearFocus()
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             enabled = apiKey.isNotBlank(),
-            shape = MaterialTheme.shapes.medium
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ArmyColors.Primary
+            )
         ) {
-            Text("시작하기")
+            Text(
+                "계속",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -354,33 +473,35 @@ fun ExternalEndpointInputScreen(onEndpointEntered: (String) -> Unit) {
 
     Column(
         modifier = Modifier
-            .fillMaxWidth()
+            .fillMaxSize()
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "외부 API 주소 필요",
-            style = MaterialTheme.typography.headlineMedium,
-            color = ArmyColors.Primary,
+            text = "서버 주소 입력",
+            style = MaterialTheme.typography.displaySmall,
             fontWeight = FontWeight.Bold
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "설정에서 외부 API를 선택한 경우\nAPI 서버 주소를 입력해야 합니다.",
-            textAlign = TextAlign.Center,
+            text = "외부 API 서버 주소를 입력해주세요",
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(48.dp))
 
         OutlinedTextField(
             value = endpoint,
             onValueChange = { endpoint = it },
-            label = { Text("API Endpoint") },
+            placeholder = { Text("https://example.com") },
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.medium,
+            shape = RoundedCornerShape(14.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                focusedBorderColor = ArmyColors.Primary
+            ),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = {
                 if (endpoint.isNotBlank()) {
@@ -389,7 +510,8 @@ fun ExternalEndpointInputScreen(onEndpointEntered: (String) -> Unit) {
                 }
             })
         )
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Button(
             onClick = {
                 if (endpoint.isNotBlank()) {
@@ -397,11 +519,20 @@ fun ExternalEndpointInputScreen(onEndpointEntered: (String) -> Unit) {
                     focusManager.clearFocus()
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
             enabled = endpoint.isNotBlank(),
-            shape = MaterialTheme.shapes.medium
+            shape = RoundedCornerShape(14.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = ArmyColors.Primary
+            )
         ) {
-            Text("시작하기")
+            Text(
+                "계속",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
 }
@@ -418,21 +549,22 @@ fun MealContent(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp)
+            .padding(horizontal = 20.dp)
     ) {
-        // Date Header
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // Date Header - Apple Style Large Title
         Text(
             text = state.targetDate,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.Bold,
-            color = ArmyColors.Primary
+            style = MaterialTheme.typography.headlineLarge,
+            fontWeight = FontWeight.Bold
         )
         
         val calories = formatCalories(state.meal?.sumCal)
         if (calories != null) {
             Text(
-                text = "총 칼로리: $calories",
-                style = MaterialTheme.typography.labelLarge,
+                text = calories,
+                style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
@@ -440,12 +572,12 @@ fun MealContent(
         Spacer(modifier = Modifier.height(24.dp))
 
         if (state.meal == null) {
-            EmptyState(message = "오늘의 식단 정보가 없습니다.")
+            EmptyState(message = "식단 정보가 없습니다")
         } else {
             val meals = listOfNotNull(
                 "아침" to state.meal.breakfast,
-                "중식" to state.meal.lunch,
-                "석식" to state.meal.dinner,
+                "점심" to state.meal.lunch,
+                "저녁" to state.meal.dinner,
                 if (state.meal.adspcfd.isNotBlank() && state.meal.adspcfd != "메뉴 정보 없음") 
                     "부식" to state.meal.adspcfd else null
             )
@@ -453,7 +585,7 @@ fun MealContent(
             if (isWideScreen) {
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     maxItemsInEachRow = 2
                 ) {
                     meals.forEach { (title, content) ->
@@ -468,19 +600,26 @@ fun MealContent(
             } else {
                 meals.forEach { (title, content) ->
                     MealCard(title, content, keywords)
+                    Spacer(modifier = Modifier.height(12.dp))
                 }
             }
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(24.dp))
         
-        OutlinedButton(
+        // Refresh Button - Minimal Style
+        TextButton(
             onClick = viewModel::loadMeal,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier.align(Alignment.CenterHorizontally)
         ) { 
-            Text("새로고침") 
+            Text(
+                "새로고침",
+                color = ArmyColors.Primary,
+                style = MaterialTheme.typography.bodyLarge
+            ) 
         }
-        Spacer(modifier = Modifier.height(32.dp))
+        
+        Spacer(modifier = Modifier.height(24.dp))
     }
 }
 

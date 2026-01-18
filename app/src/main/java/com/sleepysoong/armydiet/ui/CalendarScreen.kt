@@ -1,5 +1,7 @@
 package com.sleepysoong.armydiet.ui
 
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -11,9 +13,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.filled.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowLeft
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,12 +26,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.ui.components.EmptyState
 import com.sleepysoong.armydiet.ui.components.MealCard
 import com.sleepysoong.armydiet.ui.theme.ArmyColors
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -48,21 +48,16 @@ fun CalendarScreen(
     keywords: Set<String> = emptySet(),
     onMealEdit: suspend (MealEntity) -> Unit = {},
     modifier: Modifier = Modifier
-)
-{
+) {
     var currentMonth by remember { mutableStateOf(YearMonth.from(selectedDate)) }
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    
-    // Responsive logic (Foldable/Tablet)
     val isWideScreen = screenWidth > 600.dp
     
     if (isWideScreen) {
         Row(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = modifier.fillMaxSize(),
+            horizontalArrangement = Arrangement.spacedBy(20.dp)
         ) {
             CalendarSection(
                 currentMonth = currentMonth,
@@ -90,15 +85,15 @@ fun CalendarScreen(
                 onDateSelected = onDateSelected,
                 onPreviousMonth = { currentMonth = currentMonth.minusMonths(1) },
                 onNextMonth = { currentMonth = currentMonth.plusMonths(1) },
-                modifier = Modifier.weight(0.45f).fillMaxHeight()
+                modifier = Modifier.weight(0.45f)
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
             MealDetailSection(
                 selectedDate = selectedDate,
                 selectedMeal = selectedMeal,
                 keywords = keywords,
                 onMealEdit = onMealEdit,
-                modifier = Modifier.weight(0.55f).fillMaxHeight()
+                modifier = Modifier.weight(0.55f)
             )
         }
     }
@@ -114,20 +109,28 @@ private fun CalendarSection(
     onNextMonth: () -> Unit,
     modifier: Modifier
 ) {
-    Column(modifier = modifier) {
-        CalendarHeader(
-            currentMonth = currentMonth,
-            onPreviousMonth = onPreviousMonth,
-            onNextMonth = onNextMonth
-        )
-        WeekDayHeader()
-        CalendarGrid(
-            currentMonth = currentMonth,
-            selectedDate = selectedDate,
-            mealData = mealData,
-            onDateSelected = onDateSelected,
-            modifier = Modifier.weight(1f)
-        )
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            CalendarHeader(
+                currentMonth = currentMonth,
+                onPreviousMonth = onPreviousMonth,
+                onNextMonth = onNextMonth
+            )
+            Spacer(modifier = Modifier.height(16.dp))
+            WeekDayHeader()
+            Spacer(modifier = Modifier.height(8.dp))
+            CalendarGrid(
+                currentMonth = currentMonth,
+                selectedDate = selectedDate,
+                mealData = mealData,
+                onDateSelected = onDateSelected,
+                modifier = Modifier.weight(1f)
+            )
+        }
     }
 }
 
@@ -153,28 +156,45 @@ private fun CalendarHeader(
     currentMonth: YearMonth,
     onPreviousMonth: () -> Unit,
     onNextMonth: () -> Unit
-)
-{
+) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        IconButton(onClick = onPreviousMonth) {
-            Icon(Icons.Default.KeyboardArrowLeft, contentDescription = "이전 달", tint = ArmyColors.Primary)
-        }
-        
         Text(
             text = "${currentMonth.year}년 ${currentMonth.monthValue}월",
             style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            color = ArmyColors.Primary
+            fontWeight = FontWeight.Bold
         )
         
-        IconButton(onClick = onNextMonth) {
-            Icon(Icons.Default.KeyboardArrowRight, contentDescription = "다음 달", tint = ArmyColors.Primary)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            IconButton(
+                onClick = onPreviousMonth,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    Icons.Rounded.KeyboardArrowLeft,
+                    contentDescription = "이전 달",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            IconButton(
+                onClick = onNextMonth,
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    Icons.Rounded.KeyboardArrowRight,
+                    contentDescription = "다음 달",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -183,21 +203,17 @@ private fun CalendarHeader(
 private fun WeekDayHeader() {
     val weekDays = listOf("일", "월", "화", "수", "목", "금", "토")
     
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
+    Row(modifier = Modifier.fillMaxWidth()) {
         weekDays.forEachIndexed { index, day ->
             Text(
                 text = day,
                 modifier = Modifier.weight(1f),
                 textAlign = TextAlign.Center,
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Medium,
                 color = when (index) {
-                    0 -> ArmyColors.Error.copy(alpha = 0.8f) // Sunday
-                    6 -> Color(0xFF1976D2).copy(alpha = 0.8f) // Saturday
+                    0 -> ArmyColors.Error
+                    6 -> Color(0xFF007AFF) // iOS Blue
                     else -> MaterialTheme.colorScheme.onSurfaceVariant
                 }
             )
@@ -212,8 +228,7 @@ private fun CalendarGrid(
     mealData: Map<String, MealEntity>,
     onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier
-)
-{
+) {
     val firstDayOfMonth = currentMonth.atDay(1)
     val lastDayOfMonth = currentMonth.atEndOfMonth()
     val firstDayOfWeek = firstDayOfMonth.dayOfWeek.value % 7
@@ -227,9 +242,8 @@ private fun CalendarGrid(
     LazyVerticalGrid(
         columns = GridCells.Fixed(7),
         modifier = modifier.fillMaxWidth(),
-        contentPadding = PaddingValues(vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp)
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         items(days) { date ->
             if (date != null) {
@@ -254,21 +268,24 @@ private fun DayCell(
     isToday: Boolean,
     hasMeal: Boolean,
     onClick: () -> Unit
-)
-{
+) {
     val dayOfWeek = date.dayOfWeek.value % 7
+    
+    val backgroundColor by animateColorAsState(
+        targetValue = when {
+            isSelected -> ArmyColors.Primary
+            isToday -> ArmyColors.Primary.copy(alpha = 0.1f)
+            else -> Color.Transparent
+        },
+        animationSpec = tween(150),
+        label = "day_bg"
+    )
     
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                when {
-                    isSelected -> ArmyColors.Primary
-                    isToday -> ArmyColors.PrimaryContainer
-                    else -> Color.Transparent
-                }
-            )
+            .clip(CircleShape)
+            .background(backgroundColor)
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
@@ -276,24 +293,21 @@ private fun DayCell(
             Text(
                 text = date.dayOfMonth.toString(),
                 style = MaterialTheme.typography.bodyMedium,
-                fontWeight = if (isSelected || isToday) FontWeight.Bold else FontWeight.Normal,
+                fontWeight = if (isSelected || isToday) FontWeight.SemiBold else FontWeight.Normal,
                 color = when {
-                    isSelected -> ArmyColors.OnPrimary
+                    isSelected -> Color.White
                     dayOfWeek == 0 -> ArmyColors.Error
-                    dayOfWeek == 6 -> Color(0xFF1976D2)
-                    else -> ArmyColors.OnSurface
+                    dayOfWeek == 6 -> Color(0xFF007AFF)
+                    else -> MaterialTheme.colorScheme.onSurface
                 }
             )
-            if (hasMeal) {
+            if (hasMeal && !isSelected) {
                 Spacer(modifier = Modifier.height(2.dp))
                 Box(
                     modifier = Modifier
                         .size(4.dp)
                         .clip(CircleShape)
-                        .background(
-                            if (isSelected) ArmyColors.OnPrimary
-                            else ArmyColors.PrimaryLight
-                        )
+                        .background(ArmyColors.Primary)
                 )
             }
         }
@@ -307,20 +321,16 @@ private fun MealDetailView(
     keywords: Set<String>,
     onMealEdit: suspend (MealEntity) -> Unit,
     modifier: Modifier = Modifier
-)
-{
+) {
     val displayDate = date.format(DateTimeFormatter.ofPattern("M월 d일 (E)", Locale.KOREAN))
     val dateStr = date.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
     var showEditDialog by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     
-    Card(
+    Surface(
         modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = ArmyColors.Surface
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(20.dp)
     ) {
         Column(
             modifier = Modifier
@@ -335,15 +345,21 @@ private fun MealDetailView(
             ) {
                 Text(
                     text = displayDate,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    color = ArmyColors.Primary
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
                 )
-                IconButton(onClick = { showEditDialog = true }) {
+                IconButton(
+                    onClick = { showEditDialog = true },
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
                     Icon(
-                        Icons.Default.Edit,
+                        Icons.Rounded.Edit,
                         contentDescription = "수정",
-                        tint = ArmyColors.Primary
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -351,18 +367,20 @@ private fun MealDetailView(
             Spacer(modifier = Modifier.height(16.dp))
             
             if (meal == null) {
-                EmptyState(message = "선택한 날짜의 식단이 없습니다.")
+                EmptyState(message = "식단 정보가 없습니다")
             } else {
                 MealCard("아침", cleanAllergyInfo(meal.breakfast), keywords)
+                Spacer(modifier = Modifier.height(8.dp))
                 MealCard("점심", cleanAllergyInfo(meal.lunch), keywords)
+                Spacer(modifier = Modifier.height(8.dp))
                 MealCard("저녁", cleanAllergyInfo(meal.dinner), keywords)
                 
                 val calories = formatCalories(meal.sumCal)
                 if (calories != null) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        text = "총 칼로리: $calories",
-                        style = MaterialTheme.typography.labelMedium,
+                        text = calories,
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.align(Alignment.End)
                     )
@@ -400,7 +418,13 @@ private fun MealEditDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("식단 수정") },
+        shape = RoundedCornerShape(20.dp),
+        title = {
+            Text(
+                "식단 수정",
+                fontWeight = FontWeight.Bold
+            )
+        },
         text = {
             Column(
                 modifier = Modifier.verticalScroll(rememberScrollState()),
@@ -411,6 +435,7 @@ private fun MealEditDialog(
                     onValueChange = { breakfast = it },
                     label = { Text("아침") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     minLines = 2
                 )
                 OutlinedTextField(
@@ -418,6 +443,7 @@ private fun MealEditDialog(
                     onValueChange = { lunch = it },
                     label = { Text("점심") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     minLines = 2
                 )
                 OutlinedTextField(
@@ -425,6 +451,7 @@ private fun MealEditDialog(
                     onValueChange = { dinner = it },
                     label = { Text("저녁") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     minLines = 2
                 )
                 OutlinedTextField(
@@ -432,6 +459,7 @@ private fun MealEditDialog(
                     onValueChange = { calories = it },
                     label = { Text("칼로리 (선택)") },
                     modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     singleLine = true
                 )
             }
@@ -449,12 +477,12 @@ private fun MealEditDialog(
                     )
                 )
             }) {
-                Text("저장")
+                Text("저장", color = ArmyColors.Primary, fontWeight = FontWeight.SemiBold)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("취소")
+                Text("취소", color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     )
