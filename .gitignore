@@ -12,10 +12,11 @@ api_*.json
 !google-services.json
 
 # Built variants
-*.apk
 *.aar
 *.ap_
 *.aab
+# release 폴더 APK는 추적
+!release/*.apk
 
 # Built binaries
 *.dex
