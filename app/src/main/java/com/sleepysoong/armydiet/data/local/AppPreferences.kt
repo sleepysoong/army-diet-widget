@@ -24,11 +24,13 @@ class AppPreferences(private val context: Context) {
     private val KEYWORD_LIST = stringPreferencesKey("highlight_keywords")
     private val MEAL_SOURCE = stringPreferencesKey("meal_source")
     private val EXTERNAL_API_ENDPOINT = stringPreferencesKey("external_api_endpoint")
+    private val MND_UNIT_CODE = stringPreferencesKey("mnd_unit_code")
 
     companion object {
         val DEFAULT_KEYWORDS = setOf(
             "소시지", "소세지", "닭", "삼겹살", "불고기", "돈가스", "갈비", "돼지", "소고기", "고기"
         )
+        const val DEFAULT_MND_UNIT_CODE = "7369"
         const val SOURCE_LOCAL = "local"
         const val SOURCE_EXTERNAL = "external"
     }
@@ -66,6 +68,9 @@ class AppPreferences(private val context: Context) {
     val externalApiEndpoint: Flow<String?> = context.dataStore.data
         .map { preferences -> preferences[EXTERNAL_API_ENDPOINT] }
 
+    val mndUnitCode: Flow<String> = context.dataStore.data
+        .map { preferences -> preferences[MND_UNIT_CODE]?.takeIf { it.isNotBlank() } ?: DEFAULT_MND_UNIT_CODE }
+
     suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences ->
             preferences[API_KEY] = key
@@ -94,6 +99,12 @@ class AppPreferences(private val context: Context) {
     suspend fun setExternalApiEndpoint(endpoint: String) {
         context.dataStore.edit { preferences ->
             preferences[EXTERNAL_API_ENDPOINT] = endpoint
+        }
+    }
+
+    suspend fun setMndUnitCode(code: String) {
+        context.dataStore.edit { preferences ->
+            preferences[MND_UNIT_CODE] = code.trim().ifBlank { DEFAULT_MND_UNIT_CODE }
         }
     }
 

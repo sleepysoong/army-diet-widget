@@ -20,6 +20,9 @@ interface MealDao {
     @Query("SELECT * FROM meals")
     fun getAllMealsFlow(): Flow<List<MealEntity>>
 
+    @Query("DELETE FROM meals")
+    suspend fun clearMeals()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertMeals(meals: List<MealEntity>)
 }

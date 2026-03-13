@@ -2,11 +2,12 @@ package com.sleepysoong.armydiet.data.remote
 
 import com.google.gson.annotations.SerializedName
 
-// Go: MNDApiResponse
-data class MndResponse(
-    @SerializedName("DS_TB_MNDT_DATEBYMLSVC_7369")
-    val service: MndService?
-)
+private const val MND_SERVICE_PREFIX = "DS_TB_MNDT_DATEBYMLSVC_"
+
+typealias MndResponse = Map<String, MndService>
+
+fun MndResponse.extractService(): MndService? =
+    entries.firstOrNull { it.key.startsWith(MND_SERVICE_PREFIX) }?.value
 
 data class MndService(
     @SerializedName("list_total_count")

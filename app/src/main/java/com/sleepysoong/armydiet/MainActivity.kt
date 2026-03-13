@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.viewModels
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -35,7 +36,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.work.*
 import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealEntity
@@ -60,6 +60,14 @@ class MainActivity : ComponentActivity() {
     private val container: AppContainer by lazy {
         (application as ArmyDietApp).container
     }
+
+    private val mainViewModel: MainViewModel by viewModels {
+        MainViewModelFactory(
+            container.mealRepository,
+            container.preferences,
+            applicationContext
+        )
+    }
     
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -72,16 +80,15 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    val factory = MainViewModelFactory(
-                        container.mealRepository,
-                        container.preferences,
-                        applicationContext
-                    )
-                    val viewModel: MainViewModel = viewModel(factory = factory)
-                    MainScreen(viewModel, container)
+                    MainScreen(mainViewModel, container)
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        mainViewModel.loadMeal()
     }
 
     private fun scheduleSyncWorker() {

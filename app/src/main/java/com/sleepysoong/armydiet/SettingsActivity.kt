@@ -3,6 +3,8 @@ package com.sleepysoong.armydiet
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -53,12 +55,20 @@ fun SettingsScreen(
     val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
     val mealSource by container.preferences.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
     val endpoint by container.preferences.externalApiEndpoint.collectAsStateWithLifecycle(initialValue = "")
+    val mndUnitCode by container.preferences.mndUnitCode.collectAsStateWithLifecycle(
+        initialValue = AppPreferences.DEFAULT_MND_UNIT_CODE
+    )
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
     var endpointInput by remember { mutableStateOf("") }
+    var mndUnitCodeInput by remember { mutableStateOf(AppPreferences.DEFAULT_MND_UNIT_CODE) }
 
     LaunchedEffect(endpoint) {
         endpointInput = endpoint ?: ""
+    }
+
+    LaunchedEffect(mndUnitCode) {
+        mndUnitCodeInput = mndUnitCode
     }
 
     Scaffold(
@@ -66,7 +76,7 @@ fun SettingsScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        "맛있는 음식 설정", 
+                        "식단 설정", 
                         fontWeight = FontWeight.Bold,
                         color = ArmyColors.Primary
                     ) 
@@ -92,6 +102,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             Text(
                 text = "식단 데이터 소스",
@@ -119,6 +130,52 @@ fun SettingsScreen(
                     }
                 }
             )
+
+            if (mealSource == AppPreferences.SOURCE_LOCAL) {
+                Spacer(modifier = Modifier.height(16.dp))
+
+                OutlinedTextField(
+                    value = mndUnitCodeInput,
+                    onValueChange = { mndUnitCodeInput = it },
+                    label = { Text("국방부 부대 코드") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    supportingText = {
+                        Text("DS_TB_MNDT_DATEBYMLSVC_ 뒤에 붙는 번호를 입력하세요. 예: 7369")
+                    },
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = ArmyColors.Primary,
+                        focusedLabelColor = ArmyColors.Primary
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = {
+                        scope.launch {
+                            val normalizedCode = mndUnitCodeInput.trim()
+                                .ifBlank { AppPreferences.DEFAULT_MND_UNIT_CODE }
+                            val changed = normalizedCode != mndUnitCode
+
+                            container.preferences.setMndUnitCode(normalizedCode)
+
+                            if (changed) {
+                                container.preferences.updateSyncStatus(0, 0)
+                                container.mealDao.clearMeals()
+                            }
+
+                            MealWidgetReceiver.updateAllWidgets(context)
+                        }
+                    },
+                    enabled = mndUnitCodeInput.trim().ifBlank { AppPreferences.DEFAULT_MND_UNIT_CODE } != mndUnitCode,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium
+                ) {
+                    Text("부대 코드 저장")
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -204,7 +261,7 @@ fun SettingsScreen(
                 }
             )
             
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
             
             ResetApiKeySection(
                 onResetApiKey = {

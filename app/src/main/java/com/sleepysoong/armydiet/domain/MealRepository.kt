@@ -6,6 +6,7 @@ import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.data.remote.ExternalMealApi
 import com.sleepysoong.armydiet.data.remote.MndApi
 import com.sleepysoong.armydiet.data.remote.MndRow
+import com.sleepysoong.armydiet.data.remote.extractService
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
@@ -29,6 +30,9 @@ class MealRepository(
         private val ALLERGY_REGEX = Regex("\\([0-9.]+\\)")
         private val DATE_FORMATS = listOf("yyyy-MM-dd", "yyyy.MM.dd", "yyyyMMdd")
     }
+
+    private fun getMndServiceId(unitCode: String): String =
+        "DS_TB_MNDT_DATEBYMLSVC_${unitCode.ifBlank { AppPreferences.DEFAULT_MND_UNIT_CODE }}"
     
     private val syncMutex = Mutex()
     
@@ -79,8 +83,9 @@ class MealRepository(
     }
     
     private suspend fun performSync(apiKey: String, reset: Boolean) {
-        val countResponse = api.getMeals(apiKey, 1, 1)
-        val totalCount = countResponse.service?.listTotalCount ?: return
+        val serviceId = getMndServiceId(preferences.mndUnitCode.first())
+        val countResponse = api.getMeals(apiKey, serviceId, 1, 1)
+        val totalCount = countResponse.extractService()?.listTotalCount ?: return
         
         if (totalCount == 0) return
         
@@ -97,8 +102,8 @@ class MealRepository(
         
         while (startIdx <= totalCount && processedCount < maxItems) {
             val endIdx = (startIdx + BATCH_SIZE - 1).coerceAtMost(totalCount)
-            val response = api.getMeals(apiKey, startIdx, endIdx)
-            val rows = response.service?.rows
+            val response = api.getMeals(apiKey, serviceId, startIdx, endIdx)
+            val rows = response.extractService()?.rows
             
             if (rows.isNullOrEmpty()) break
             
