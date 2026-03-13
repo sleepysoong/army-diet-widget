@@ -2,16 +2,14 @@ package com.sleepysoong.armydiet.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// Apple-style Minimal Palette
+// Icon-derived Dark Green Palette
 object ArmyColors {
-    // Primary - Subtle Green Accent
-    val Primary = Color(0xFF34C759)        // Apple Green
-    val PrimaryLight = Color(0xFF5DD97A)
-    val PrimaryDark = Color(0xFF248A3D)
+    val Primary = Color(0xFF1F6B43)
+    val PrimaryLight = Color(0xFF2F8458)
+    val PrimaryDark = Color(0xFF14452B)
     
-    // Containers
-    val PrimaryContainer = Color(0xFFE8F9ED)
-    val PrimaryContainerDark = Color(0xFF1C3D26)
+    val PrimaryContainer = Color(0xFFDDEFE5)
+    val PrimaryContainerDark = Color(0xFF183624)
     
     // Backgrounds - Clean & Minimal
     val Background = Color(0xFFF2F2F7)     // iOS Light Gray
@@ -34,10 +32,9 @@ object ArmyColors {
     val OnSurfaceVariant = Color(0xFF8E8E93)  // iOS Gray
     val OnSurfaceVariantDark = Color(0xFF8E8E93)
     
-    // Semantic Colors
-    val Error = Color(0xFFFF3B30)           // iOS Red
-    val Highlight = Color(0xFF34C759)
-    val HighlightDark = Color(0xFF30D158)
+    val Error = Color(0xFFFF3B30)
+    val Highlight = Color(0xFF276F49)
+    val HighlightDark = Color(0xFF4F9B70)
     
     // Card & Divider
     val CardBackground = Color(0xFFFFFFFF)
@@ -49,7 +46,6 @@ object ArmyColors {
     val FloatingBar = Color(0xFFFFFFFF)
     val FloatingBarDark = Color(0xFF1C1C1E)
     
-    // Highlighter Style
-    val Highlighter = Color(0xFF34C759)
+    val Highlighter = Color(0xFF1F6B43)
     val HighlighterText = Color.White
 }

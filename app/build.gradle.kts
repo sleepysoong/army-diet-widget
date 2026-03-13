@@ -1,3 +1,14 @@
+import java.util.Properties
+
+val versionProperties = Properties().apply {
+    rootProject.file("version.properties").inputStream().use(::load)
+}
+
+val appVersionCode = versionProperties.getProperty("VERSION_CODE")?.toInt()
+    ?: error("VERSION_CODE missing in version.properties")
+val appVersionName = versionProperties.getProperty("VERSION_NAME")
+    ?: error("VERSION_NAME missing in version.properties")
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -12,8 +23,8 @@ android {
         applicationId = "com.sleepysoong.armydiet"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersionName
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

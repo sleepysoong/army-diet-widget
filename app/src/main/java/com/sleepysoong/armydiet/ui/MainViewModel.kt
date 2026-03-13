@@ -22,7 +22,11 @@ sealed interface MealUiState {
     data object SourceSelection : MealUiState  // 첫 실행시 소스 선택
     data object ApiKeyMissing : MealUiState
     data object ExternalEndpointMissing : MealUiState
-    data class Success(val meal: MealEntity?, val targetDate: String) : MealUiState
+    data class Success(
+        val meal: MealEntity?,
+        val targetDate: String,
+        val isDefaultDate: Boolean
+    ) : MealUiState
     data class Error(val message: String, val isExternalSource: Boolean = false) : MealUiState
 }
 
@@ -36,13 +40,14 @@ class MainViewModel(
     val uiState: StateFlow<MealUiState> = _uiState.asStateFlow()
 
     private var cachedApiKey: String? = null
+    private var selectedDate: LocalDate = getDefaultTargetDate()
 
     init {
         initialize()
     }
 
     private fun initialize() {
-        loadMeal()
+        loadMeal(selectedDate)
     }
 
     fun saveApiKey(key: String) {
@@ -73,8 +78,9 @@ class MainViewModel(
         }
     }
 
-    fun loadMeal() {
+    fun loadMeal(targetDate: LocalDate = selectedDate) {
         viewModelScope.launch {
+            selectedDate = targetDate
             val source = preferences.mealSource.first()
             val apiKey = preferences.apiKey.first()
             val endpoint = preferences.externalApiEndpoint.first()
@@ -101,19 +107,20 @@ class MainViewModel(
 
             _uiState.value = MealUiState.Loading
 
-            val (dateStr, displayDate) = getTargetDateInfo()
+            val (dateStr, displayDate) = getTargetDateInfo(targetDate)
+            val isDefaultDate = targetDate == getDefaultTargetDate()
 
             repository.getMeal(dateStr)
                 .onSuccess { meal ->
                     if (meal != null) {
-                        _uiState.value = MealUiState.Success(meal, displayDate)
+                        _uiState.value = MealUiState.Success(meal, displayDate, isDefaultDate)
                         updateWidget()
                     } else {
                         val key = cachedApiKey
                         if (!key.isNullOrBlank() && source != AppPreferences.SOURCE_EXTERNAL) {
-                            syncAndRetry(key, dateStr, displayDate)
+                            syncAndRetry(key, targetDate, dateStr, displayDate, isDefaultDate)
                         } else {
-                            _uiState.value = MealUiState.Success(null, displayDate)
+                            _uiState.value = MealUiState.Success(null, displayDate, isDefaultDate)
                         }
                     }
                 }
@@ -126,18 +133,25 @@ class MainViewModel(
         }
     }
     
-    private suspend fun syncAndRetry(key: String, dateStr: String, displayDate: String) {
+    private suspend fun syncAndRetry(
+        key: String,
+        targetDate: LocalDate,
+        dateStr: String,
+        displayDate: String,
+        isDefaultDate: Boolean
+    ) {
         val isFirstSync = preferences.lastCheckedIndex.first() == 0
         
         repository.syncIfNeeded(key, forceReset = isFirstSync)
             .onSuccess {
                 repository.getMeal(dateStr)
                     .onSuccess { meal ->
-                        _uiState.value = MealUiState.Success(meal, displayDate)
+                        selectedDate = targetDate
+                        _uiState.value = MealUiState.Success(meal, displayDate, isDefaultDate)
                         updateWidget()
                     }
                     .onFailure {
-                        _uiState.value = MealUiState.Success(null, displayDate)
+                        _uiState.value = MealUiState.Success(null, displayDate, isDefaultDate)
                     }
             }
             .onFailure { e ->
@@ -145,9 +159,24 @@ class MainViewModel(
             }
     }
     
-    private fun getTargetDateInfo(): Pair<String, String> {
+    fun loadPreviousMeal() {
+        loadMeal(selectedDate.minusDays(1))
+    }
+
+    fun loadNextMeal() {
+        loadMeal(selectedDate.plusDays(1))
+    }
+
+    fun loadDefaultMeal() {
+        loadMeal(getDefaultTargetDate())
+    }
+
+    private fun getDefaultTargetDate(): LocalDate {
         val now = LocalTime.now()
-        val targetDate = if (now.hour >= 18) LocalDate.now().plusDays(1) else LocalDate.now()
+        return if (now.hour >= 18) LocalDate.now().plusDays(1) else LocalDate.now()
+    }
+
+    private fun getTargetDateInfo(targetDate: LocalDate): Pair<String, String> {
         val dateStr = targetDate.format(DateTimeFormatter.ofPattern("yyyyMMdd"))
         val displayDate = targetDate.format(DateTimeFormatter.ofPattern("M월 d일 (E)"))
         return dateStr to displayDate

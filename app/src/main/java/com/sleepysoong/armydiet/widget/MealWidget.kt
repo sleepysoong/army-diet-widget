@@ -19,6 +19,7 @@ import com.sleepysoong.armydiet.MainActivity
 import com.sleepysoong.armydiet.R
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.di.AppContainer
+import com.sleepysoong.armydiet.ui.theme.ArmyColors
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
@@ -119,8 +120,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
     val tagFontSize = (menuFontSize.value * data.tagScale).sp
     val headerFontSize = (menuFontSize.value * data.headerScale).sp
     
-    // 다크 그린 색상 정의
-    val darkGreen = ColorProvider(Color(0xFF1B5E20))
+    val accentGreen = ColorProvider(ArmyColors.Primary)
     
     Column(
         modifier = GlanceModifier
@@ -140,7 +140,7 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
             Text(
                 text = data.displayDate,
                 style = TextStyle(
-                    color = darkGreen,
+                    color = accentGreen,
                     fontSize = headerFontSize,
                     fontWeight = FontWeight.Bold
                 )
@@ -164,9 +164,9 @@ private fun WidgetContent(data: WidgetData, size: DpSize) {
         // 메뉴 섹션: 왼쪽 패딩 추가로 날짜 정렬과 구분
         Box(modifier = GlanceModifier.fillMaxWidth().padding(start = 12.dp)) {
             if (isSmall) {
-                CompactContent(data, darkGreen, menuFontSize, tagFontSize)
+                CompactContent(data, accentGreen, menuFontSize, tagFontSize)
             } else {
-                FullContent(data, isLarge, darkGreen, menuFontSize, tagFontSize)
+                FullContent(data, accentGreen, menuFontSize, tagFontSize)
             }
         }
     }
@@ -209,8 +209,7 @@ private fun CompactContent(
 
 @Composable
 private fun FullContent(
-    data: WidgetData, 
-    isLarge: Boolean, 
+    data: WidgetData,
     themeColor: ColorProvider,
     menuFontSize: TextUnit,
     tagFontSize: TextUnit
@@ -284,7 +283,11 @@ private fun MealTag(
 @Composable
 private fun MenuChip(text: String, isDelicious: Boolean, fontSize: TextUnit) {
     // 하이라이트 스타일: 배경 다크그린, 글자 화이트, 볼드 제외
-    val backgroundColor = if (isDelicious) ColorProvider(Color(0xFF1B5E20)) else ColorProvider(Color.Transparent)
+    val backgroundColor = if (isDelicious) {
+        ColorProvider(ArmyColors.Primary)
+    } else {
+        ColorProvider(Color.Transparent)
+    }
     val textColor = if (isDelicious) ColorProvider(Color.White) else GlanceTheme.colors.onBackground
 
     Box(

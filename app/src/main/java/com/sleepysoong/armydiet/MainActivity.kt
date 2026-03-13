@@ -12,9 +12,12 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material.icons.rounded.Home
 import androidx.compose.material.icons.rounded.Settings
@@ -559,20 +562,56 @@ fun MealContent(
             .padding(horizontal = 20.dp)
     ) {
         Spacer(modifier = Modifier.height(8.dp))
-        
-        // Date Header - Apple Style Large Title
-        Text(
-            text = state.targetDate,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold
-        )
-        
-        val calories = formatCalories(state.meal?.sumCal)
-        if (calories != null) {
-            Text(
-                text = calories,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            DateNavigationButton(
+                icon = Icons.Default.ArrowBack,
+                contentDescription = "이전 날짜",
+                onClick = viewModel::loadPreviousMeal
+            )
+
+            Column(
+                modifier = Modifier.weight(1f),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Text(
+                    text = state.targetDate,
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                val calories = formatCalories(state.meal?.sumCal)
+                if (calories != null) {
+                    Text(
+                        text = calories,
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (!state.isDefaultDate) {
+                    TextButton(
+                        onClick = viewModel::loadDefaultMeal,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                    ) {
+                        Text(
+                            text = "기준 날짜로",
+                            color = ArmyColors.Primary,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+                }
+            }
+
+            DateNavigationButton(
+                icon = Icons.Default.ArrowForward,
+                contentDescription = "다음 날짜",
+                onClick = viewModel::loadNextMeal
             )
         }
         
@@ -627,6 +666,30 @@ fun MealContent(
         }
         
         Spacer(modifier = Modifier.height(24.dp))
+    }
+}
+
+@Composable
+private fun DateNavigationButton(
+    icon: ImageVector,
+    contentDescription: String,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = CircleShape,
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
+        tonalElevation = 0.dp
+    ) {
+        IconButton(
+            onClick = onClick,
+            modifier = Modifier.size(52.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = ArmyColors.Primary
+            )
+        }
     }
 }
 

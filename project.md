@@ -18,6 +18,7 @@
 사용자 관점의 핵심 기능은 아래와 같다.
 
 - 오늘 식단 확인
+- 홈 화면에서 이전/다음 날짜로 이동
 - 18시 이후에는 자동으로 내일 식단 표시
 - 홈 화면 위젯으로 식단 확인
 - 위젯 글자 크기/태그 크기/헤더 크기/칼로리 표시 여부 설정
@@ -45,6 +46,9 @@
 - WorkManager
 - Kotlin Coroutines
 - Glance AppWidget
+
+버전 관리는 `version.properties`를 통해 분리되어 있으며,
+GitHub Actions가 `main` 브랜치 push 시 `VERSION_CODE` / `VERSION_NAME`을 자동으로 올린 뒤 APK를 빌드하도록 구성되어 있다.
 
 빌드 타깃 관련 설정은 다음과 같다.
 
@@ -396,6 +400,7 @@ DAO가 제공하는 주요 동작:
 - 저장된 설정값 확인
 - 데이터 소스별 필수 입력값 검사
 - 오늘/내일 대상 날짜 계산
+- 홈 화면 이전/다음 날짜 탐색
 - 리포지토리에서 식단 로드
 - API Key/외부 엔드포인트 저장
 - 위젯 갱신 트리거
@@ -404,6 +409,8 @@ DAO가 제공하는 주요 동작:
 중요한 동작 포인트:
 
 - 앱 시작 시 즉시 `loadMeal()` 호출
+- 홈 화면에서 이전/다음 날짜 이동 가능
+- 기본 기준 날짜(현재 시각 기준 오늘 또는 내일)로 빠르게 복귀 가능
 - 둘 다 비어 있으면 `SourceSelection`
 - 외부 모드인데 endpoint 없으면 `ExternalEndpointMissing`
 - 로컬 모드인데 API key 없으면 `ApiKeyMissing`
@@ -482,7 +489,7 @@ DAO가 제공하는 주요 동작:
 디자인 방향:
 
 - Apple-inspired minimal style
-- 녹색 포인트 컬러 기반
+- 앱 아이콘 그린에서 파생한 다크 그린 포인트 컬러 기반
 - Pretendard 폰트 패밀리 사용
 - Material3 기반이지만 커스텀 팔레트와 타이포그래피로 분위기를 만듦
 
@@ -541,12 +548,15 @@ DAO가 제공하는 주요 동작:
 현재 Android CI는 아래 흐름이다.
 
 1. 체크아웃
-2. JDK 17 설정
-3. Gradle 8.5 설정
-4. `gradle assembleDebug` 실행
-5. 디버그 APK 업로드
+2. `push to main`이면 `version.properties` 자동 버전 업
+3. 변경된 버전 파일을 bot 계정으로 다시 커밋/푸시
+4. JDK 17 설정
+5. Gradle 8.5 설정
+6. `./gradlew assembleDebug assembleRelease bundleRelease` 실행
+7. 버전 정보가 포함된 이름으로 디버그 APK 업로드
+8. 버전 정보가 포함된 이름으로 release APK 및 release AAB 업로드
 
-즉, 최소한 디버그 빌드는 항상 깨지지 않는 상태를 유지하는 것이 중요하다.
+즉, `main`에 커밋이 들어가면 버전 충돌을 피하기 위한 자동 버전 업과 debug/release 산출물 빌드가 같이 수행된다.
 
 ### 16.2 pre-commit 스크립트
 
