@@ -555,14 +555,15 @@ DAO가 제공하는 주요 동작:
 
 1. 체크아웃
 2. `push to main`이면 `version.properties` 자동 버전 업
-3. 변경된 버전 파일을 bot 계정으로 다시 커밋/푸시
-4. JDK 17 설정
-5. Gradle 8.5 설정
-6. `./gradlew assembleDebug assembleRelease bundleRelease` 실행
-7. 버전 정보가 포함된 이름으로 디버그 APK 업로드
-8. 버전 정보가 포함된 이름으로 release APK 및 release AAB 업로드
+3. JDK 17 및 Gradle 8.5 설정
+4. 버전 자동 증가
+5. `./gradlew assembleDebug assembleRelease bundleRelease` 실행
+6. `release/army-diet.apk`를 최신 release APK로 갱신
+7. `version.properties`와 `release/army-diet.apk`를 bot 계정으로 다시 커밋/푸시
+8. 버전 정보가 포함된 이름으로 디버그 APK 업로드
+9. 버전 정보가 포함된 이름으로 release APK 및 release AAB 업로드
 
-즉, `main`에 커밋이 들어가면 버전 충돌을 피하기 위한 자동 버전 업과 debug/release 산출물 빌드가 같이 수행된다.
+즉, `main`에 커밋이 들어가면 버전 충돌을 피하기 위한 자동 버전 업과 debug/release 산출물 빌드, 저장소의 최신 APK 동기화가 같이 수행된다.
 
 추가로 이 저장소는 `signing/army-diet-debug.keystore`를 공통 서명키로 사용해서,
 로컬 빌드와 GitHub Actions 빌드가 같은 서명으로 설치/업데이트되도록 맞춰 둔 상태다.
