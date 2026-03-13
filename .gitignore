@@ -34,7 +34,6 @@ api_*.json
 .gradle/
 build/
 app/build/
-gradle/wrapper/gradle-wrapper.jar
 !gradle/wrapper/gradle-wrapper.properties
 
 # Local properties (SDK path, etc.)
