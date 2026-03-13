@@ -7,12 +7,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.GlanceAppWidgetManager
@@ -73,15 +75,21 @@ fun WidgetConfigScreen(
 ) {
     val scope = rememberCoroutineScope()
     val context = androidx.compose.ui.platform.LocalContext.current
+    val minFontPercent = (WidgetConfig.MIN_FONT_SCALE * 100).toInt()
+    val maxFontPercent = (WidgetConfig.MAX_FONT_SCALE * 100).toInt()
     
-    var fontScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_FONT_SCALE) }
+    var fontScaleInput by remember {
+        mutableStateOf(((WidgetConfig.DEFAULT_FONT_SCALE * 100).toInt()).toString())
+    }
     var tagScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_TAG_SCALE) }
     var headerScale by remember { mutableFloatStateOf(WidgetConfig.DEFAULT_HEADER_SCALE) }
     var showCalories by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    val parsedFontScale = fontScaleInput.toFloatOrNull()?.div(100f)
+    val isFontScaleValid = parsedFontScale != null && parsedFontScale in WidgetConfig.MIN_FONT_SCALE..WidgetConfig.MAX_FONT_SCALE
     
     LaunchedEffect(Unit) {
-        fontScale = config.fontScale.first()
+        fontScaleInput = ((config.fontScale.first() * 100).toInt()).toString()
         tagScale = config.tagScale.first()
         headerScale = config.headerScale.first()
         showCalories = config.showCalories.first()
@@ -99,16 +107,28 @@ fun WidgetConfigScreen(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
+
+        Spacer(modifier = Modifier.height(6.dp))
+
+        Text(
+            text = "이 설정은 현재 위젯에만 적용됩니다.",
+            fontSize = 13.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
         
         Spacer(modifier = Modifier.height(24.dp))
         
-        // 글자 크기
-        ConfigSlider(
+        ConfigNumberInput(
             title = "기본 글자 크기",
-            value = fontScale,
-            valueRange = WidgetConfig.MIN_FONT_SCALE..WidgetConfig.MAX_FONT_SCALE,
-            valueLabel = "${(fontScale * 100).toInt()}%",
-            onValueChange = { fontScale = it }
+            value = fontScaleInput,
+            minValue = minFontPercent,
+            maxValue = maxFontPercent,
+            suffix = "%",
+            onValueChange = { input ->
+                fontScaleInput = input.filter { it.isDigit() }.take(3)
+            },
+            isError = fontScaleInput.isNotBlank() && !isFontScaleValid,
+            supportingText = "${minFontPercent}% ~ ${maxFontPercent}% 범위로 입력"
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -159,7 +179,7 @@ fun WidgetConfigScreen(
                 if (!isSaving) {
                     isSaving = true
                     scope.launch {
-                        config.setFontScale(fontScale)
+                        config.setFontScale(parsedFontScale!!)
                         config.setTagScale(tagScale)
                         config.setHeaderScale(headerScale)
                         config.setShowCalories(showCalories)
@@ -176,7 +196,7 @@ fun WidgetConfigScreen(
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isSaving
+            enabled = !isSaving && isFontScaleValid
         ) {
             if (isSaving) {
                 CircularProgressIndicator(
@@ -188,6 +208,43 @@ fun WidgetConfigScreen(
             }
             Text(if (isSaving) "저장 중..." else "저장")
         }
+    }
+}
+
+@Composable
+private fun ConfigNumberInput(
+    title: String,
+    value: String,
+    minValue: Int,
+    maxValue: Int,
+    suffix: String,
+    onValueChange: (String) -> Unit,
+    isError: Boolean,
+    supportingText: String
+) {
+    Column {
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            suffix = { Text(suffix) },
+            isError = isError,
+            supportingText = {
+                Text(
+                    text = if (isError) "$minValue$suffix ~ $maxValue$suffix 범위로 입력해주세요" else supportingText
+                )
+            }
+        )
     }
 }
 
