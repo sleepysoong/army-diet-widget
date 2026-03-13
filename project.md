@@ -519,6 +519,8 @@ DAO가 제공하는 주요 동작:
 
 ```bash
 ./gradlew assembleDebug
+./gradlew assembleRelease
+./gradlew bundleRelease
 ./gradlew app:build
 ./gradlew app:lintDebug
 ./gradlew app:testDebugUnitTest
@@ -526,16 +528,20 @@ DAO가 제공하는 주요 동작:
 ./gradlew app:installDebug
 ./gradlew clean
 ./gradlew tasks --all
+./scripts/export_release_apk.sh
 ```
 
 의미 요약:
 
 - `assembleDebug` - 디버그 APK 빌드
+- `assembleRelease` - 서명된 release APK 빌드
+- `bundleRelease` - release AAB 빌드
 - `app:build` - 앱 빌드 + 테스트 계열 포함 전체 빌드
 - `app:lintDebug` - 안드로이드 lint
 - `app:testDebugUnitTest` - 로컬 unit test
 - `app:check` - 검증 작업 전체
 - `app:installDebug` - 연결된 디바이스/에뮬레이터에 설치
+- `./scripts/export_release_apk.sh` - 최신 installable APK를 `release/army-diet.apk`로 복사
 
 ## 16. CI / 훅 정보
 
@@ -557,6 +563,9 @@ DAO가 제공하는 주요 동작:
 8. 버전 정보가 포함된 이름으로 release APK 및 release AAB 업로드
 
 즉, `main`에 커밋이 들어가면 버전 충돌을 피하기 위한 자동 버전 업과 debug/release 산출물 빌드가 같이 수행된다.
+
+추가로 이 저장소는 `signing/army-diet-debug.keystore`를 공통 서명키로 사용해서,
+로컬 빌드와 GitHub Actions 빌드가 같은 서명으로 설치/업데이트되도록 맞춰 둔 상태다.
 
 ### 16.2 pre-commit 스크립트
 

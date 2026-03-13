@@ -8,6 +8,7 @@ val appVersionCode = versionProperties.getProperty("VERSION_CODE")?.toInt()
     ?: error("VERSION_CODE missing in version.properties")
 val appVersionName = versionProperties.getProperty("VERSION_NAME")
     ?: error("VERSION_NAME missing in version.properties")
+val sharedSigningKeystore = rootProject.file("signing/army-diet-debug.keystore")
 
 plugins {
     id("com.android.application")
@@ -32,8 +33,20 @@ android {
         }
     }
 
+    signingConfigs {
+        create("shared") {
+            storeFile = sharedSigningKeystore
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
     buildTypes {
+        debug {
+            signingConfig = signingConfigs.getByName("shared")
+        }
         release {
+            signingConfig = signingConfigs.getByName("shared")
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

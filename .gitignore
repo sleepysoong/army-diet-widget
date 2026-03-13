@@ -42,6 +42,7 @@ local.properties
 # Secrets
 *.jks
 *.keystore
+!signing/army-diet-debug.keystore
 *.p12
 google-services.json
 
