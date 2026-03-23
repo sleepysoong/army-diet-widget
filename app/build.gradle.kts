@@ -102,6 +102,7 @@ dependencies {
     implementation("androidx.compose.ui:ui-graphics")
     implementation("androidx.compose.ui:ui-tooling-preview")
     implementation("androidx.compose.material3:material3")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
     
     // Retrofit (Network)
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
@@ -132,8 +133,10 @@ dependencies {
     implementation("androidx.glance:glance-material3:1.1.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation(platform("androidx.compose:compose-bom:2023.08.00"))
     testImplementation("androidx.test:core:1.5.0")
     testImplementation("androidx.work:work-testing:2.9.0")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.7.3")
     testImplementation("org.robolectric:robolectric:4.11.1")
 }

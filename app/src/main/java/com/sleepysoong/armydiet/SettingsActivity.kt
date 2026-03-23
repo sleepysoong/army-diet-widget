@@ -14,14 +14,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.clickable
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.di.AppContainer
 import com.sleepysoong.armydiet.ui.theme.AppTheme
 import com.sleepysoong.armydiet.ui.theme.ArmyColors
-import com.sleepysoong.armydiet.widget.MealWidgetReceiver
 import kotlinx.coroutines.launch
 
 class SettingsActivity : ComponentActivity() {
@@ -37,7 +38,7 @@ class SettingsActivity : ComponentActivity() {
                     color = ArmyColors.Background
                 ) {
                     SettingsScreen(
-                        container = container,
+                        dependencies = container,
                         onBack = { finish() }
                     )
                 }
@@ -49,17 +50,16 @@ class SettingsActivity : ComponentActivity() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    container: AppContainer,
+    dependencies: SettingsDependencies,
     onBack: () -> Unit
 ) {
-    val keywords by container.preferences.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
-    val mealSource by container.preferences.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
-    val endpoint by container.preferences.externalApiEndpoint.collectAsStateWithLifecycle(initialValue = "")
-    val mndUnitCode by container.preferences.mndUnitCode.collectAsStateWithLifecycle(
+    val keywords by dependencies.settings.highlightKeywords.collectAsStateWithLifecycle(initialValue = emptySet())
+    val mealSource by dependencies.settings.mealSource.collectAsStateWithLifecycle(initialValue = AppPreferences.SOURCE_LOCAL)
+    val endpoint by dependencies.settings.externalApiEndpoint.collectAsStateWithLifecycle(initialValue = "")
+    val mndUnitCode by dependencies.settings.mndUnitCode.collectAsStateWithLifecycle(
         initialValue = AppPreferences.DEFAULT_MND_UNIT_CODE
     )
     val scope = rememberCoroutineScope()
-    val context = androidx.compose.ui.platform.LocalContext.current
     var endpointInput by remember { mutableStateOf("") }
     var mndUnitCodeInput by remember { mutableStateOf(AppPreferences.DEFAULT_MND_UNIT_CODE) }
 
@@ -125,8 +125,8 @@ fun SettingsScreen(
                 selected = mealSource == AppPreferences.SOURCE_LOCAL,
                 onSelect = {
                     scope.launch {
-                        container.preferences.setMealSource(AppPreferences.SOURCE_LOCAL)
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.setMealSource(AppPreferences.SOURCE_LOCAL)
+                        dependencies.widgetUpdateDispatcher.updateAll()
                     }
                 }
             )
@@ -139,7 +139,9 @@ fun SettingsScreen(
                     onValueChange = { mndUnitCodeInput = it },
                     label = { Text("국방부 부대 코드") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_local_unit_code"),
                     shape = MaterialTheme.shapes.medium,
                     supportingText = {
                         Text("DS_TB_MNDT_DATEBYMLSVC_ 뒤에 붙는 번호를 입력하세요. 예: 7369")
@@ -159,18 +161,20 @@ fun SettingsScreen(
                                 .ifBlank { AppPreferences.DEFAULT_MND_UNIT_CODE }
                             val changed = normalizedCode != mndUnitCode
 
-                            container.preferences.setMndUnitCode(normalizedCode)
+                            dependencies.settings.setMndUnitCode(normalizedCode)
 
                             if (changed) {
-                                container.preferences.updateSyncStatus(0, 0)
-                                container.mealDao.clearMeals()
+                                dependencies.settings.updateSyncStatus(0, 0)
+                                dependencies.mealDao.clearMeals()
                             }
 
-                            MealWidgetReceiver.updateAllWidgets(context)
+                            dependencies.widgetUpdateDispatcher.updateAll()
                         }
                     },
                     enabled = mndUnitCodeInput.trim().ifBlank { AppPreferences.DEFAULT_MND_UNIT_CODE } != mndUnitCode,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_save_unit_code"),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text("부대 코드 저장")
@@ -185,8 +189,8 @@ fun SettingsScreen(
                 selected = mealSource == AppPreferences.SOURCE_EXTERNAL,
                 onSelect = {
                     scope.launch {
-                        container.preferences.setMealSource(AppPreferences.SOURCE_EXTERNAL)
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.setMealSource(AppPreferences.SOURCE_EXTERNAL)
+                        dependencies.widgetUpdateDispatcher.updateAll()
                     }
                 }
             )
@@ -199,7 +203,9 @@ fun SettingsScreen(
                     onValueChange = { endpointInput = it },
                     label = { Text("API Endpoint") },
                     singleLine = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_external_endpoint"),
                     shape = MaterialTheme.shapes.medium,
                     supportingText = {
                         Text("예: https://example.com")
@@ -211,12 +217,14 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            container.preferences.setExternalApiEndpoint(endpointInput.trim())
-                            MealWidgetReceiver.updateAllWidgets(context)
+                            dependencies.settings.setExternalApiEndpoint(endpointInput.trim())
+                            dependencies.widgetUpdateDispatcher.updateAll()
                         }
                     },
                     enabled = endpointInput.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("settings_save_endpoint"),
                     shape = MaterialTheme.shapes.medium
                 ) {
                     Text("엔드포인트 저장")
@@ -243,8 +251,8 @@ fun SettingsScreen(
             KeywordInput(
                 onAdd = { keyword ->
                     scope.launch { 
-                        container.preferences.addKeyword(keyword) 
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.addKeyword(keyword) 
+                        dependencies.widgetUpdateDispatcher.updateAll()
                     }
                 }
             )
@@ -255,8 +263,8 @@ fun SettingsScreen(
                 keywords = keywords,
                 onRemove = { keyword ->
                     scope.launch { 
-                        container.preferences.removeKeyword(keyword) 
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.removeKeyword(keyword) 
+                        dependencies.widgetUpdateDispatcher.updateAll()
                     }
                 }
             )
@@ -266,15 +274,15 @@ fun SettingsScreen(
             ResetApiKeySection(
                 onResetApiKey = {
                     scope.launch {
-                        container.preferences.clearApiKey()
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.clearApiKey()
+                        dependencies.widgetUpdateDispatcher.updateAll()
                         onBack()
                     }
                 },
                 onResetEndpoint = {
                     scope.launch {
-                        container.preferences.clearExternalApiEndpoint()
-                        MealWidgetReceiver.updateAllWidgets(context)
+                        dependencies.settings.clearExternalApiEndpoint()
+                        dependencies.widgetUpdateDispatcher.updateAll()
                         onBack()
                     }
                 }
@@ -356,7 +364,10 @@ fun SourceOptionRow(
     onSelect: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .testTag("source_option_$title")
+            .clickable(onClick = onSelect),
         colors = CardDefaults.cardColors(
             containerColor = if (selected) ArmyColors.PrimaryContainer else ArmyColors.Surface
         ),

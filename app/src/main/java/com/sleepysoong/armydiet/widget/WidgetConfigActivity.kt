@@ -13,6 +13,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -195,7 +196,9 @@ fun WidgetConfigScreen(
                     }
                 }
             },
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("widget_save_button"),
             enabled = !isSaving && isFontScaleValid
         ) {
             if (isSaving) {
@@ -235,7 +238,9 @@ private fun ConfigNumberInput(
             value = value,
             onValueChange = onValueChange,
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("widget_font_input"),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
             suffix = { Text(suffix) },
             isError = isError,

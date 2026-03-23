@@ -13,4 +13,6 @@ cd "$ROOT_DIR"
 mkdir -p "$ROOT_DIR/release"
 cp "$OUTPUT_APK" "$TARGET_APK"
 
+"$ROOT_DIR/scripts/verify_release_artifacts.sh"
+
 echo "Exported release APK to $TARGET_APK"

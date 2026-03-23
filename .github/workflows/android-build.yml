@@ -52,6 +52,9 @@ jobs:
       if: github.event_name == 'push'
       run: cp app/build/outputs/apk/release/app-release.apk release/army-diet.apk
 
+    - name: Verify release artifacts
+      run: ./scripts/verify_release_artifacts.sh
+
     - name: Commit version bump and APK
       if: github.event_name == 'push'
       run: |

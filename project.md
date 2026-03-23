@@ -48,7 +48,7 @@
 - Glance AppWidget
 
 테스트는 현재 `app/src/test` 기준 로컬 unit test 체계를 갖추고 있으며,
-`MealRepository`, `MainViewModel`, `SyncWorker`, `WidgetConfig` 핵심 로직부터 검증을 시작한 상태다.
+`MealRepository`, `MainViewModel`, `SyncWorker`, `WidgetConfig`, `WidgetConfigActivity`, `SettingsScreen` 핵심 로직/화면 전환부터 검증을 시작한 상태다.
 
 버전 관리는 `version.properties`를 통해 분리되어 있으며,
 GitHub Actions가 `main` 브랜치 push 시 `VERSION_CODE` / `VERSION_NAME`을 자동으로 올린 뒤 APK를 빌드하도록 구성되어 있다.
@@ -532,6 +532,7 @@ DAO가 제공하는 주요 동작:
 ./gradlew clean
 ./gradlew tasks --all
 ./scripts/export_release_apk.sh
+./scripts/verify_release_artifacts.sh
 ```
 
 의미 요약:
@@ -545,6 +546,7 @@ DAO가 제공하는 주요 동작:
 - `app:check` - 검증 작업 전체
 - `app:installDebug` - 연결된 디바이스/에뮬레이터에 설치
 - `./scripts/export_release_apk.sh` - 최신 installable APK를 `release/army-diet.apk`로 복사
+- `./scripts/verify_release_artifacts.sh` - debug/release/AAB/repo APK 산출물 존재와 release APK 동기화 확인
 
 ## 16. CI / 훅 정보
 
@@ -586,7 +588,7 @@ DAO가 제공하는 주요 동작:
 
 ### 17.1 테스트 범위 제한
 
-현재는 `app/src/test`에 `MealRepository`, `MainViewModel`, `SyncWorker`, `WidgetConfig` 중심의 unit test 세트가 추가되어 있다.
+현재는 `app/src/test`에 `MealRepository`, `MainViewModel`, `SyncWorker`, `WidgetConfig`, `WidgetConfigActivity`, `SettingsScreen` 중심의 unit test 세트가 추가되어 있다.
 다만 `app/src/androidTest` 기반 계측 테스트는 아직 없고,
 위젯/액티비티/WorkManager까지 포괄하는 검증은 여전히 부족하다.
 
