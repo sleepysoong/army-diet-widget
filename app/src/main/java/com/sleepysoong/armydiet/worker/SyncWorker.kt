@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.sleepysoong.armydiet.di.AppContainer
-import com.sleepysoong.armydiet.widget.MealWidgetReceiver
+import com.sleepysoong.armydiet.widget.ContextWidgetUpdateDispatcher
 import kotlinx.coroutines.flow.first
 import retrofit2.HttpException
 import java.io.IOException
@@ -18,12 +18,21 @@ class SyncWorker(
     companion object {
         const val WORK_NAME = "meal_sync_worker"
         private const val TAG = "SyncWorker"
+
+        internal var dependenciesFactory: (Context) -> SyncWorkerDependencies = { context ->
+            val container = AppContainer.getInstance(context)
+            object : SyncWorkerDependencies {
+                override val settings = container.preferences
+                override val repository = container.mealRepository
+                override val widgetUpdateDispatcher = ContextWidgetUpdateDispatcher(context)
+            }
+        }
     }
 
     override suspend fun doWork(): Result {
-        val container = AppContainer.getInstance(applicationContext)
-        val preferences = container.preferences
-        val repository = container.mealRepository
+        val dependencies = dependenciesFactory(applicationContext)
+        val preferences = dependencies.settings
+        val repository = dependencies.repository
 
         return try {
             val apiKey = preferences.apiKey.first()
@@ -36,7 +45,7 @@ class SyncWorker(
             repository.syncIfNeeded(apiKey, forceReset = false)
                 .onSuccess {
                     Log.i(TAG, "Sync completed successfully")
-                    MealWidgetReceiver.updateAllWidgets(applicationContext)
+                    dependencies.widgetUpdateDispatcher.updateAll()
                 }
                 .onFailure { e ->
                     Log.e(TAG, "Sync failed", e)
