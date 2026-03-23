@@ -1,6 +1,9 @@
 package com.sleepysoong.armydiet.domain
 
+import com.sleepysoong.armydiet.core.AppClock
+import com.sleepysoong.armydiet.core.SystemAppClock
 import com.sleepysoong.armydiet.data.local.AppPreferences
+import com.sleepysoong.armydiet.data.local.AppSettings
 import com.sleepysoong.armydiet.data.local.MealDao
 import com.sleepysoong.armydiet.data.local.MealEntity
 import com.sleepysoong.armydiet.data.remote.ExternalMealApi
@@ -18,9 +21,10 @@ import java.util.Locale
 class MealRepository(
     private val mealDao: MealDao,
     private val api: MndApi,
-    private val preferences: AppPreferences,
-    private val externalApiFactory: (String) -> ExternalMealApi
-) {
+    private val preferences: AppSettings,
+    private val externalApiFactory: (String) -> ExternalMealApi,
+    private val clock: AppClock = SystemAppClock
+) : MealDataRepository {
     companion object {
         private const val SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000L
         private const val BATCH_SIZE = 1000
@@ -36,7 +40,7 @@ class MealRepository(
     
     private val syncMutex = Mutex()
     
-    suspend fun getMeal(date: String): Result<MealEntity?> = withContext(Dispatchers.IO) {
+    override suspend fun getMeal(date: String): Result<MealEntity?> = withContext(Dispatchers.IO) {
         runCatching {
             // 항상 로컬 DB에서 조회
             checkAndSyncIfNeeded(date)
@@ -44,7 +48,7 @@ class MealRepository(
         }
     }
     
-    suspend fun syncIfNeeded(apiKey: String, forceReset: Boolean = false): Result<Unit> =
+    override suspend fun syncIfNeeded(apiKey: String, forceReset: Boolean): Result<Unit> =
         withContext(Dispatchers.IO) {
             runCatching {
                 syncMutex.withLock {
@@ -61,7 +65,7 @@ class MealRepository(
     
     private suspend fun checkAndSyncIfNeeded(date: String? = null) {
         val lastSync = preferences.lastCheckedTimestamp.first()
-        val now = System.currentTimeMillis()
+        val now = clock.nowMillis()
 
         if (now - lastSync > SYNC_INTERVAL_MS) {
             if (syncMutex.tryLock()) {
@@ -93,7 +97,7 @@ class MealRepository(
         var startIdx = lastIndex + 1
         
         if (startIdx > totalCount) {
-            preferences.updateSyncStatus(totalCount, System.currentTimeMillis())
+            preferences.updateSyncStatus(totalCount, clock.nowMillis())
             return
         }
         
@@ -113,7 +117,7 @@ class MealRepository(
         }
         
         val newLastIndex = (startIdx - 1).coerceAtMost(totalCount)
-        preferences.updateSyncStatus(newLastIndex, System.currentTimeMillis())
+        preferences.updateSyncStatus(newLastIndex, clock.nowMillis())
     }
     
     private suspend fun processBatch(rows: List<MndRow>) {
@@ -174,7 +178,7 @@ class MealRepository(
         if (endpoint.isBlank()) return
         
         val api = externalApiFactory(endpoint)
-        val targetDate = date ?: java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))
+        val targetDate = date ?: clock.currentDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMdd"))
         
         runCatching {
             val response = api.getMenu(targetDate)
@@ -189,7 +193,7 @@ class MealRepository(
                     sumCal = data.total_calories.orEmpty()
                 )
                 mealDao.insertMeals(listOf(meal))
-                preferences.updateSyncStatus(0, System.currentTimeMillis())
+                preferences.updateSyncStatus(0, clock.nowMillis())
             }
         }
     }

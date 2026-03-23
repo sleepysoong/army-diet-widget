@@ -1,6 +1,7 @@
 package com.sleepysoong.armydiet.di
 
 import android.content.Context
+import com.sleepysoong.armydiet.core.SystemAppClock
 import com.sleepysoong.armydiet.data.local.AppDatabase
 import com.sleepysoong.armydiet.data.local.AppPreferences
 import com.sleepysoong.armydiet.data.local.MealDao
@@ -38,9 +39,9 @@ class AppContainer private constructor(context: Context) {
     
     // Repository
     val mealRepository: MealRepository by lazy {
-        MealRepository(mealDao, api, preferences) { baseUrl ->
+        MealRepository(mealDao, api, preferences, { baseUrl ->
             NetworkModule.createExternalApi(baseUrl)
-        }
+        }, SystemAppClock)
     }
     
     companion object {

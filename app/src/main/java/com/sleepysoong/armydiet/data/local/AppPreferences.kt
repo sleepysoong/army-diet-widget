@@ -17,7 +17,7 @@ import java.io.IOException
 
 val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
 
-class AppPreferences(private val context: Context) {
+class AppPreferences(private val context: Context) : AppSettings {
     private val API_KEY = stringPreferencesKey("api_key")
     private val LAST_CHECKED_INDEX = intPreferencesKey("last_checked_index")
     private val LAST_CHECKED_TIMESTAMP = longPreferencesKey("last_checked_timestamp")
@@ -35,7 +35,7 @@ class AppPreferences(private val context: Context) {
         const val SOURCE_EXTERNAL = "external"
     }
 
-    val apiKey: Flow<String?> = context.dataStore.data
+    override val apiKey: Flow<String?> = context.dataStore.data
         .catch { exception ->
             if (exception is IOException) {
                 Log.e("AppPreferences", "Error reading preferences", exception)
@@ -46,13 +46,13 @@ class AppPreferences(private val context: Context) {
         }
         .map { preferences -> preferences[API_KEY] }
 
-    val lastCheckedIndex: Flow<Int> = context.dataStore.data
+    override val lastCheckedIndex: Flow<Int> = context.dataStore.data
         .map { preferences -> preferences[LAST_CHECKED_INDEX] ?: 0 }
 
-    val lastCheckedTimestamp: Flow<Long> = context.dataStore.data
+    override val lastCheckedTimestamp: Flow<Long> = context.dataStore.data
         .map { preferences -> preferences[LAST_CHECKED_TIMESTAMP] ?: 0L }
 
-    val highlightKeywords: Flow<Set<String>> = context.dataStore.data
+    override val highlightKeywords: Flow<Set<String>> = context.dataStore.data
         .map { preferences ->
             val stored = preferences[KEYWORD_LIST]
             if (stored.isNullOrBlank()) {
@@ -62,59 +62,59 @@ class AppPreferences(private val context: Context) {
             }
         }
 
-    val mealSource: Flow<String> = context.dataStore.data
+    override val mealSource: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[MEAL_SOURCE] ?: SOURCE_LOCAL }
 
-    val externalApiEndpoint: Flow<String?> = context.dataStore.data
+    override val externalApiEndpoint: Flow<String?> = context.dataStore.data
         .map { preferences -> preferences[EXTERNAL_API_ENDPOINT] }
 
-    val mndUnitCode: Flow<String> = context.dataStore.data
+    override val mndUnitCode: Flow<String> = context.dataStore.data
         .map { preferences -> preferences[MND_UNIT_CODE]?.takeIf { it.isNotBlank() } ?: DEFAULT_MND_UNIT_CODE }
 
-    suspend fun saveApiKey(key: String) {
+    override suspend fun saveApiKey(key: String) {
         context.dataStore.edit { preferences ->
             preferences[API_KEY] = key
         }
     }
 
-    suspend fun clearApiKey() {
+    override suspend fun clearApiKey() {
         context.dataStore.edit { preferences ->
             preferences.remove(API_KEY)
         }
     }
 
-    suspend fun updateSyncStatus(index: Int, timestamp: Long) {
+    override suspend fun updateSyncStatus(index: Int, timestamp: Long) {
         context.dataStore.edit { preferences ->
             preferences[LAST_CHECKED_INDEX] = index
             preferences[LAST_CHECKED_TIMESTAMP] = timestamp
         }
     }
 
-    suspend fun setMealSource(source: String) {
+    override suspend fun setMealSource(source: String) {
         context.dataStore.edit { preferences ->
             preferences[MEAL_SOURCE] = source
         }
     }
 
-    suspend fun setExternalApiEndpoint(endpoint: String) {
+    override suspend fun setExternalApiEndpoint(endpoint: String) {
         context.dataStore.edit { preferences ->
             preferences[EXTERNAL_API_ENDPOINT] = endpoint
         }
     }
 
-    suspend fun setMndUnitCode(code: String) {
+    override suspend fun setMndUnitCode(code: String) {
         context.dataStore.edit { preferences ->
             preferences[MND_UNIT_CODE] = code.trim().ifBlank { DEFAULT_MND_UNIT_CODE }
         }
     }
 
-    suspend fun clearExternalApiEndpoint() {
+    override suspend fun clearExternalApiEndpoint() {
         context.dataStore.edit { preferences ->
             preferences.remove(EXTERNAL_API_ENDPOINT)
         }
     }
 
-    suspend fun addKeyword(keyword: String) {
+    override suspend fun addKeyword(keyword: String) {
         context.dataStore.edit { preferences ->
             val current = preferences[KEYWORD_LIST]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet()
                 ?: DEFAULT_KEYWORDS.toMutableSet()
@@ -123,7 +123,7 @@ class AppPreferences(private val context: Context) {
         }
     }
 
-    suspend fun removeKeyword(keyword: String) {
+    override suspend fun removeKeyword(keyword: String) {
         context.dataStore.edit { preferences ->
             val current = preferences[KEYWORD_LIST]?.split(",")?.filter { it.isNotBlank() }?.toMutableSet()
                 ?: DEFAULT_KEYWORDS.toMutableSet()

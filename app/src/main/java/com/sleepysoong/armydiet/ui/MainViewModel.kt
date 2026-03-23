@@ -4,17 +4,20 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.sleepysoong.armydiet.core.AppClock
+import com.sleepysoong.armydiet.core.SystemAppClock
 import com.sleepysoong.armydiet.data.local.AppPreferences
+import com.sleepysoong.armydiet.data.local.AppSettings
 import com.sleepysoong.armydiet.data.local.MealEntity
-import com.sleepysoong.armydiet.domain.MealRepository
-import com.sleepysoong.armydiet.widget.MealWidgetReceiver
+import com.sleepysoong.armydiet.domain.MealDataRepository
+import com.sleepysoong.armydiet.widget.ContextWidgetUpdateDispatcher
+import com.sleepysoong.armydiet.widget.WidgetUpdateDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 sealed interface MealUiState {
@@ -31,9 +34,10 @@ sealed interface MealUiState {
 }
 
 class MainViewModel(
-    private val repository: MealRepository,
-    private val preferences: AppPreferences,
-    private val appContext: Context
+    private val repository: MealDataRepository,
+    private val preferences: AppSettings,
+    private val widgetUpdateDispatcher: WidgetUpdateDispatcher,
+    private val clock: AppClock = SystemAppClock
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<MealUiState>(MealUiState.Loading)
@@ -172,8 +176,9 @@ class MainViewModel(
     }
 
     private fun getDefaultTargetDate(): LocalDate {
-        val now = LocalTime.now()
-        return if (now.hour >= 18) LocalDate.now().plusDays(1) else LocalDate.now()
+        val now = clock.currentTime()
+        val currentDate = clock.currentDate()
+        return if (now.hour >= 18) currentDate.plusDays(1) else currentDate
     }
 
     private fun getTargetDateInfo(targetDate: LocalDate): Pair<String, String> {
@@ -183,7 +188,7 @@ class MainViewModel(
     }
     
     private fun updateWidget() {
-        MealWidgetReceiver.updateAllWidgets(appContext)
+        widgetUpdateDispatcher.updateAll()
     }
 
     fun resetApiKey() {
@@ -212,8 +217,8 @@ class MainViewModel(
 }
 
 class MainViewModelFactory(
-    private val repository: MealRepository,
-    private val preferences: AppPreferences,
+    private val repository: MealDataRepository,
+    private val preferences: AppSettings,
     private val appContext: Context
 ) : ViewModelProvider.Factory {
     
@@ -222,6 +227,10 @@ class MainViewModelFactory(
         require(modelClass.isAssignableFrom(MainViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return MainViewModel(repository, preferences, appContext) as T
+        return MainViewModel(
+            repository = repository,
+            preferences = preferences,
+            widgetUpdateDispatcher = ContextWidgetUpdateDispatcher(appContext)
+        ) as T
     }
 }
